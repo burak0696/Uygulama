@@ -1025,7 +1025,7 @@ namespace BaranYardimci
         private Dictionary<string, MalzemeOzet> Ozet(Dictionary<string, double> sm) { var ozet = new Dictionary<string, MalzemeOzet>(StringComparer.OrdinalIgnoreCase); foreach (var v in _tumVeriler) { double sip = sm.ContainsKey(v.DosyaId) ? sm[v.DosyaId] : 1; double g = sip * v.MontajAdeti * v.BirimAdet; string pro = PG(v.ParcaProfil), kal = KD(v.Kalite); if (string.IsNullOrWhiteSpace(pro)) continue; string key = pro + "|" + kal; if (!ozet.ContainsKey(key)) ozet[key] = new MalzemeOzet { Profil = pro, Kalite = kal }; ozet[key].ToplamAdet += g; ozet[key].ToplamUzunluk += g * v.Uzunluk; ozet[key].ToplamAgirlik += g * v.Agirlik; } return ozet; }
         private bool IsNum(string v) { double d; return double.TryParse(v?.Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out d) || double.TryParse(v?.Trim(), NumberStyles.Any, CultureInfo.CurrentCulture, out d); }
         private double N(object o) { if (o == null) return 0; string s = o.ToString().Trim(); if (string.IsNullOrEmpty(s)) return 0; if (s.Contains(",") && s.Contains(".")) { int a = s.LastIndexOf('.'), b = s.LastIndexOf(','); s = a > b ? s.Replace(",", "") : s.Replace(".", "").Replace(",", "."); } else if (s.Contains(",")) s = s.Replace(",", "."); double r; return double.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out r) ? r : 0; }
-
+        //github deneme
         private void dgvSonuc_CellContentClick(object sender, DataGridViewCellEventArgs e) { }
     }
 }
