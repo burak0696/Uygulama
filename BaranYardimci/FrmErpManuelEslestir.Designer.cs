@@ -62,11 +62,13 @@
             this.pnlAltIc.SuspendLayout();
             this.SuspendLayout();
 
-            // ── pnlUst ──────────────────────────────────────────────────
+            // ════════════════════════════════════════════════════════════
+            //  pnlUst
+            // ════════════════════════════════════════════════════════════
             this.pnlUst.BackColor = System.Drawing.Color.FromArgb(22, 22, 26);
             this.pnlUst.Controls.Add(this.lblBaslik);
             this.pnlUst.Dock = System.Windows.Forms.DockStyle.Top;
-            this.pnlUst.Size = new System.Drawing.Size(1920, 56);
+            this.pnlUst.Size = new System.Drawing.Size(1920, 54);
 
             this.lblBaslik.AutoSize = false;
             this.lblBaslik.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -75,12 +77,14 @@
             this.lblBaslik.Text = "ERP Manuel Eşleştirme";
             this.lblBaslik.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
 
-            // ── pnlAlt ──────────────────────────────────────────────────
+            // ════════════════════════════════════════════════════════════
+            //  pnlAlt
+            // ════════════════════════════════════════════════════════════
             this.pnlAlt.BackColor = System.Drawing.Color.FromArgb(22, 22, 26);
             this.pnlAlt.Controls.Add(this.pnlAltIc);
             this.pnlAlt.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.pnlAlt.Size = new System.Drawing.Size(1920, 80);
-            this.pnlAlt.Padding = new System.Windows.Forms.Padding(16, 12, 16, 12);
+            this.pnlAlt.Size = new System.Drawing.Size(1920, 76);
+            this.pnlAlt.Padding = new System.Windows.Forms.Padding(14, 10, 14, 10);
 
             this.pnlAltIc.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlAltIc.BackColor = System.Drawing.Color.Transparent;
@@ -89,33 +93,40 @@
             this.pnlAltIc.Controls.Add(this.btnAtla);
             this.pnlAltIc.Controls.Add(this.btnEsle);
 
-            BtnS(this.btnEsle, "✔  Eşleştir & İleri", System.Drawing.Color.FromArgb(39, 174, 96), System.Windows.Forms.DockStyle.Left, 240, 56);
-            BtnS(this.btnAtla, "⏭  Atla", System.Drawing.Color.FromArgb(90, 90, 105), System.Windows.Forms.DockStyle.Left, 140, 56);
-            BtnS(this.btnTamam, "💾  Tamam & Kapat", System.Drawing.Color.FromArgb(0, 122, 204), System.Windows.Forms.DockStyle.Right, 210, 56);
-            BtnS(this.btnIptal, "✗  İptal", System.Drawing.Color.FromArgb(180, 55, 55), System.Windows.Forms.DockStyle.Right, 140, 56);
+            BtnS(this.btnEsle, "✔  Eşleştir & İleri", System.Drawing.Color.FromArgb(39, 174, 96), System.Windows.Forms.DockStyle.Left, 250, 56);
+            BtnS(this.btnAtla, "⏭  Atla", System.Drawing.Color.FromArgb(90, 90, 105), System.Windows.Forms.DockStyle.Left, 150, 56);
+            BtnS(this.btnTamam, "💾  Tamam & Kapat", System.Drawing.Color.FromArgb(0, 122, 204), System.Windows.Forms.DockStyle.Right, 220, 56);
+            BtnS(this.btnIptal, "✗  İptal", System.Drawing.Color.FromArgb(180, 55, 55), System.Windows.Forms.DockStyle.Right, 150, 56);
             this.btnEsle.Click += new System.EventHandler(this.btnEsle_Click);
             this.btnAtla.Click += new System.EventHandler(this.btnAtla_Click);
             this.btnTamam.Click += new System.EventHandler(this.btnTamam_Click);
             this.btnIptal.Click += new System.EventHandler(this.btnIptal_Click);
 
-            // ── pnlAna ──────────────────────────────────────────────────
+            // ════════════════════════════════════════════════════════════
+            //  pnlAna
+            // ════════════════════════════════════════════════════════════
             this.pnlAna.Controls.Add(this.splitMain);
             this.pnlAna.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlAna.Padding = new System.Windows.Forms.Padding(10, 8, 10, 6);
             this.pnlAna.BackColor = System.Drawing.Color.FromArgb(235, 237, 242);
 
-            // ── splitMain  (Üst: sonuç listesi  |  Alt: detay + arama) ──
+            // ════════════════════════════════════════════════════════════
+            //  splitMain — Üst: sonuç listesi  |  Alt: detay + arama
+            //  Üst bölge kısa tutuldu (240px), asıl çalışma alanı altta
+            // ════════════════════════════════════════════════════════════
             this.splitMain.Dock = System.Windows.Forms.DockStyle.Fill;
             this.splitMain.Orientation = System.Windows.Forms.Orientation.Horizontal;
-            this.splitMain.SplitterDistance = 280;
-            this.splitMain.SplitterWidth = 7;
+            this.splitMain.SplitterDistance = 240;
+            this.splitMain.SplitterWidth = 6;
             this.splitMain.BackColor = System.Drawing.Color.FromArgb(180, 190, 210);
             this.splitMain.Panel1.Controls.Add(this.lvSonuclar);
             this.splitMain.Panel2.Controls.Add(this.pnlSagIc);
             this.splitMain.Panel1.Padding = new System.Windows.Forms.Padding(0, 0, 0, 2);
             this.splitMain.Panel2.Padding = new System.Windows.Forms.Padding(0, 2, 0, 0);
 
-            // ── lvSonuclar ───────────────────────────────────────────────
+            // ════════════════════════════════════════════════════════════
+            //  lvSonuclar
+            // ════════════════════════════════════════════════════════════
             this.lvSonuclar.Dock = System.Windows.Forms.DockStyle.Fill;
             this.lvSonuclar.Font = new System.Drawing.Font("Segoe UI", 11F);
             this.lvSonuclar.FullRowSelect = true;
@@ -128,29 +139,37 @@
             this.lvSonuclar.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
                 this.colProfil2, this.colKalite2, this.colAdet2,
                 this.colUzunluk2, this.colAgirlik2, this.colKod2, this.colAdi2 });
-            this.colProfil2.Text = "Profil"; this.colProfil2.Width = 210;
+            this.colProfil2.Text = "Profil"; this.colProfil2.Width = 220;
             this.colKalite2.Text = "Kalite"; this.colKalite2.Width = 100;
             this.colAdet2.Text = "Adet"; this.colAdet2.Width = 90;
             this.colUzunluk2.Text = "Uzunluk (mm)"; this.colUzunluk2.Width = 140;
             this.colAgirlik2.Text = "Ağırlık (kg)"; this.colAgirlik2.Width = 140;
             this.colKod2.Text = "ERP Kodu"; this.colKod2.Width = 130;
-            this.colAdi2.Text = "ERP Adı"; this.colAdi2.Width = 420;
+            this.colAdi2.Text = "ERP Adı"; this.colAdi2.Width = 500;
             this.lvSonuclar.SelectedIndexChanged +=
                 new System.EventHandler(this.lvSonuclar_SelectedIndexChanged);
 
-            // ── pnlSagIc ────────────────────────────────────────────────
+            // ════════════════════════════════════════════════════════════
+            //  pnlSagIc
+            // ════════════════════════════════════════════════════════════
             this.pnlSagIc.Controls.Add(this.splitSag);
             this.pnlSagIc.Dock = System.Windows.Forms.DockStyle.Fill;
 
-            // ── splitSag  (Sol: detay kısa  |  Sağ: hammadde GENIŞ) ─────
+            // ════════════════════════════════════════════════════════════
+            //  splitSag
+            //  Sol (detay): 300px — dar, sadece poz bilgisi
+            //  Sağ (arama): kalan her şey — ÇOK GENİŞ
+            // ════════════════════════════════════════════════════════════
             this.splitSag.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.splitSag.SplitterDistance = 360;   // detay dar, arama geniş
-            this.splitSag.SplitterWidth = 7;
+            this.splitSag.SplitterDistance = 300;
+            this.splitSag.SplitterWidth = 6;
             this.splitSag.BackColor = System.Drawing.Color.FromArgb(180, 190, 210);
             this.splitSag.Panel1.Controls.Add(this.pnlDetay);
             this.splitSag.Panel2.Controls.Add(this.pnlArama);
 
-            // ── pnlDetay ────────────────────────────────────────────────
+            // ════════════════════════════════════════════════════════════
+            //  pnlDetay — sol kısım (poz bilgisi)
+            // ════════════════════════════════════════════════════════════
             this.pnlDetay.Controls.Add(this.rtbDetay);
             this.pnlDetay.Controls.Add(this.lblBilgi);
             this.pnlDetay.Controls.Add(this.lblPozNo);
@@ -159,16 +178,16 @@
             this.pnlDetay.BackColor = System.Drawing.Color.White;
 
             this.lblPozNo.Dock = System.Windows.Forms.DockStyle.Top;
-            this.lblPozNo.Font = new System.Drawing.Font("Segoe UI", 14F, System.Drawing.FontStyle.Bold);
+            this.lblPozNo.Font = new System.Drawing.Font("Segoe UI", 13F, System.Drawing.FontStyle.Bold);
             this.lblPozNo.ForeColor = System.Drawing.Color.FromArgb(0, 72, 148);
-            this.lblPozNo.Size = new System.Drawing.Size(340, 40);
+            this.lblPozNo.Size = new System.Drawing.Size(280, 40);
             this.lblPozNo.Text = "—";
             this.lblPozNo.Padding = new System.Windows.Forms.Padding(2, 4, 0, 0);
 
             this.lblBilgi.Dock = System.Windows.Forms.DockStyle.Top;
             this.lblBilgi.Font = new System.Drawing.Font("Segoe UI", 10F);
             this.lblBilgi.ForeColor = System.Drawing.Color.FromArgb(80, 80, 100);
-            this.lblBilgi.Size = new System.Drawing.Size(340, 28);
+            this.lblBilgi.Size = new System.Drawing.Size(280, 28);
             this.lblBilgi.Text = "";
             this.lblBilgi.Padding = new System.Windows.Forms.Padding(2, 0, 0, 4);
 
@@ -179,56 +198,59 @@
             this.rtbDetay.ReadOnly = true;
             this.rtbDetay.ScrollBars = System.Windows.Forms.RichTextBoxScrollBars.Vertical;
 
-            // ── pnlArama (hammadde arama — SOL'A GENİŞLEDİ) ────────────
+            // ════════════════════════════════════════════════════════════
+            //  pnlArama — sağ kısım (hammadde arama — TAM GENİŞ)
+            // ════════════════════════════════════════════════════════════
             this.pnlArama.Controls.Add(this.lvHammadde);
             this.pnlArama.Controls.Add(this.pnlSecilenBar);
             this.pnlArama.Controls.Add(this.pnlAramaUst);
             this.pnlArama.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.pnlArama.Padding = new System.Windows.Forms.Padding(6, 8, 10, 6);
+            this.pnlArama.Padding = new System.Windows.Forms.Padding(8, 8, 10, 6);
             this.pnlArama.BackColor = System.Drawing.Color.FromArgb(240, 244, 252);
 
-            // ── pnlAramaUst (başlık + arama kutusu) ────────────────────
+            // ── Başlık + arama kutusu ─────────────────────────────────────
             this.pnlAramaUst.Controls.Add(this.txtArama);
             this.pnlAramaUst.Controls.Add(this.lblAramaBaslik);
             this.pnlAramaUst.Dock = System.Windows.Forms.DockStyle.Top;
-            this.pnlAramaUst.Size = new System.Drawing.Size(1000, 76);
+            this.pnlAramaUst.Size = new System.Drawing.Size(1550, 84);
             this.pnlAramaUst.BackColor = System.Drawing.Color.Transparent;
 
             this.lblAramaBaslik.Dock = System.Windows.Forms.DockStyle.Top;
             this.lblAramaBaslik.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
             this.lblAramaBaslik.ForeColor = System.Drawing.Color.FromArgb(0, 72, 148);
-            this.lblAramaBaslik.Size = new System.Drawing.Size(1000, 32);
+            this.lblAramaBaslik.Size = new System.Drawing.Size(1550, 34);
             this.lblAramaBaslik.Text = "🔍  Hammadde Ara";
             this.lblAramaBaslik.Padding = new System.Windows.Forms.Padding(2, 4, 0, 0);
 
+            // ── ÇOK BÜYÜK ARAMA KUTUSU ───────────────────────────────────
             this.txtArama.Dock = System.Windows.Forms.DockStyle.Top;
-            this.txtArama.Font = new System.Drawing.Font("Segoe UI", 13F);
-            this.txtArama.Size = new System.Drawing.Size(1000, 38);
+            this.txtArama.Font = new System.Drawing.Font("Segoe UI", 15F);
+            this.txtArama.Size = new System.Drawing.Size(1550, 46);
             this.txtArama.BackColor = System.Drawing.Color.White;
             this.txtArama.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.txtArama.TextChanged += new System.EventHandler(this.txtArama_TextChanged);
 
-            // ── pnlSecilenBar (seçilen hammadde — BÜYÜK G��RÜNÜR ALAN) ──
+            // ── Seçilen hammadde göstergesi (alt) ─────────────────────────
             this.pnlSecilenBar.Controls.Add(this.lblSecilenKod);
             this.pnlSecilenBar.Controls.Add(this.lblSecilenBaslik);
             this.pnlSecilenBar.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.pnlSecilenBar.Size = new System.Drawing.Size(1000, 72);
+            this.pnlSecilenBar.Size = new System.Drawing.Size(1550, 74);
             this.pnlSecilenBar.BackColor = System.Drawing.Color.FromArgb(220, 245, 225);
-            this.pnlSecilenBar.Padding = new System.Windows.Forms.Padding(12, 6, 12, 6);
+            this.pnlSecilenBar.Padding = new System.Windows.Forms.Padding(14, 6, 14, 6);
 
             this.lblSecilenBaslik.Dock = System.Windows.Forms.DockStyle.Top;
-            this.lblSecilenBaslik.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.lblSecilenBaslik.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
             this.lblSecilenBaslik.ForeColor = System.Drawing.Color.FromArgb(0, 90, 30);
-            this.lblSecilenBaslik.Size = new System.Drawing.Size(980, 20);
+            this.lblSecilenBaslik.Size = new System.Drawing.Size(1522, 22);
             this.lblSecilenBaslik.Text = "SEÇİLEN HAMMADDE:";
 
             this.lblSecilenKod.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.lblSecilenKod.Font = new System.Drawing.Font("Segoe UI", 13F, System.Drawing.FontStyle.Bold);
+            this.lblSecilenKod.Font = new System.Drawing.Font("Segoe UI", 14F, System.Drawing.FontStyle.Bold);
             this.lblSecilenKod.ForeColor = System.Drawing.Color.FromArgb(0, 100, 20);
             this.lblSecilenKod.Text = "(seçilmedi)";
             this.lblSecilenKod.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 
-            // ── lvHammadde (2 sütun, büyük font, tam genişlik) ──────────
+            // ── Hammadde listesi — tam genişlik, büyük font ───────────────
             this.lvHammadde.Dock = System.Windows.Forms.DockStyle.Fill;
             this.lvHammadde.Font = new System.Drawing.Font("Segoe UI", 12F);
             this.lvHammadde.FullRowSelect = true;
@@ -240,14 +262,16 @@
             this.lvHammadde.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.lvHammadde.Columns.AddRange(new System.Windows.Forms.ColumnHeader[] {
                 this.colHNo, this.colHAdi });
-            this.colHNo.Text = "Kod"; this.colHNo.Width = 130;
-            this.colHAdi.Text = "Hammadde Adı"; this.colHAdi.Width = 700;
+            this.colHNo.Text = "Kod"; this.colHNo.Width = 140;
+            this.colHAdi.Text = "Hammadde Adı"; this.colHAdi.Width = 900;
             this.lvHammadde.SelectedIndexChanged +=
                 new System.EventHandler(this.lvHammadde_SelectedIndexChanged);
             this.lvHammadde.DoubleClick +=
                 new System.EventHandler(this.lvHammadde_DoubleClick);
 
-            // ── Form ────────────────────────────────────────────────────
+            // ════════════════════════════════════════════════════════════
+            //  FORM
+            // ════════════════════════════════════════════════════════════
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.FromArgb(235, 237, 242);
