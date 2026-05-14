@@ -48,8 +48,6 @@ namespace BaranYardimci
             public double OnerilenBoy, OnerilenMetre, OnerilenKg, OnerilenFirePct;
             public List<StokBar> OnerilenBarlar = new List<StokBar>();
         }
-        class HammaddeItem { public string No, Adi; }
-
         class CivataSatir
         {
             public string DosyaId, BoltListAdi, Dia, Standard, Grade;
@@ -80,9 +78,11 @@ namespace BaranYardimci
         private string _sonKaydedilenExcel = "";
 
         private ToolStripMenuItem mnuExceliGoster;
+        private ToolStripMenuItem mnuMalzemeDegistir;
         private ToolStripMenuItem mnuCivataYukle;
         private Panel pnlLegend;
         private Button btnExceliAc;
+        private Button btnMalzemeDegistir;
 
         // ════════════════════════════════════════════════════════════════
         public Donusturucu()
@@ -203,6 +203,22 @@ namespace BaranYardimci
             btnExceliAc.Click += btnExceliAc_Click;
             try { pnlSonucButonlar.Controls.Add(btnExceliAc); } catch { }
 
+            btnMalzemeDegistir = new Button
+            {
+                Text = "🔧  Malzeme Değiştir",
+                Dock = DockStyle.Right,
+                Width = 180,
+                Height = 47,
+                Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(180, 100, 0),
+                ForeColor = Color.White,
+                Cursor = Cursors.Hand
+            };
+            btnMalzemeDegistir.FlatAppearance.BorderSize = 0;
+            btnMalzemeDegistir.Click += btnMalzemeDegistir_Click;
+            try { pnlSonucButonlar.Controls.Add(btnMalzemeDegistir); } catch { }
+
             // ── Context menu ──────────────────────────────────────────────
             if (ctxDosya == null) ctxDosya = new ContextMenuStrip { Font = new Font("Segoe UI", 10f) };
             ctxDosya.Items.Clear();
@@ -210,6 +226,7 @@ namespace BaranYardimci
             if (mnuRotaGir == null) mnuRotaGir = new ToolStripMenuItem();
             if (mnuDosyaSil == null) mnuDosyaSil = new ToolStripMenuItem();
             mnuExceliGoster = new ToolStripMenuItem("📊  Exceli Göster");
+            mnuMalzemeDegistir = new ToolStripMenuItem("🔧  Malzemeyi Değiştir");
             mnuCivataYukle = new ToolStripMenuItem("🔩  Civata Listelerini Yükle");
 
             mnuRotaGir.Text = "✏  Rota Gir  —  İmalat Kartlarını Bas";
@@ -220,13 +237,14 @@ namespace BaranYardimci
             ctxDosya.Items.AddRange(new ToolStripItem[]
             {
                 mnuRotaGir, new ToolStripSeparator(),
-                mnuExceliGoster, new ToolStripSeparator(),
+                mnuExceliGoster, mnuMalzemeDegistir, new ToolStripSeparator(),
                 mnuCivataYukle,  new ToolStripSeparator(),
                 mnuDosyaSil
             });
 
             mnuRotaGir.Click -= mnuRotaGir_Click; mnuRotaGir.Click += mnuRotaGir_Click;
             mnuExceliGoster.Click -= mnuExceliGoster_Click; mnuExceliGoster.Click += mnuExceliGoster_Click;
+            mnuMalzemeDegistir.Click -= mnuMalzemeDegistir_Click; mnuMalzemeDegistir.Click += mnuMalzemeDegistir_Click;
             mnuCivataYukle.Click -= mnuCivataYukle_Click; mnuCivataYukle.Click += mnuCivataYukle_Click;
             mnuDosyaSil.Click -= mnuDosyaSil_Click; mnuDosyaSil.Click += mnuDosyaSil_Click;
 
@@ -419,6 +437,8 @@ namespace BaranYardimci
                 mnuRotaGir.ForeColor = aktarildi ? Color.FromArgb(0, 100, 0) : Color.Gray;
                 mnuExceliGoster.Enabled = excelVar;
                 mnuExceliGoster.ForeColor = excelVar ? Color.FromArgb(0, 60, 140) : Color.Gray;
+                mnuMalzemeDegistir.Enabled = aktarildi;
+                mnuMalzemeDegistir.ForeColor = aktarildi ? Color.FromArgb(180, 100, 0) : Color.Gray;
                 mnuCivataYukle.Enabled = aktarildi;
                 mnuCivataYukle.ForeColor = aktarildi ? Color.FromArgb(120, 55, 0) : Color.Gray;
                 mnuCivataYukle.Text = "🔩  Civata Listelerini Yükle"
@@ -438,11 +458,7 @@ namespace BaranYardimci
             if (_sagKlikSatir < 0) return;
             string yol = dgvDosyalar.Rows[_sagKlikSatir].Cells["colDosyaYolu"].Value?.ToString() ?? "";
             if (!_erpExcelYollari.ContainsKey(yol)) { MessageBox.Show("Bu dosya için Excel bulunamadı."); return; }
-            string excelYol = _erpExcelYollari[yol];
-            if (!DosyaErisebilir(excelYol)) AgaBaglan();
-            if (!DosyaErisebilir(excelYol)) { MessageBox.Show("Excel dosyasına erişilemiyor:\n" + excelYol, "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error); return; }
-            try { System.Diagnostics.Process.Start(excelYol); }
-            catch (Exception ex) { MessageBox.Show("Açılamadı: " + ex.Message); }
+            ExcelDosyasiniAc(_erpExcelYollari[yol]);
         }
 
         // ────────────────────────────────────────────────────────────────
@@ -451,33 +467,49 @@ namespace BaranYardimci
 
         private void btnExceliAc_Click(object sender, EventArgs e)
         {
-            // Seçili satırın exceli varsa onu, yoksa son kaydedilen exceli aç
-            string hedef = "";
-
-            if (_sagKlikSatir >= 0 && _sagKlikSatir < dgvDosyalar.Rows.Count)
-            {
-                string yol = dgvDosyalar.Rows[_sagKlikSatir].Cells["colDosyaYolu"].Value?.ToString() ?? "";
-                if (_erpExcelYollari.ContainsKey(yol)) hedef = _erpExcelYollari[yol];
-            }
-
-            if (string.IsNullOrEmpty(hedef))
-            {
-                // Listede seçili satır yoksa son kaydedileni aç
-                if (!string.IsNullOrEmpty(_sonKaydedilenExcel)) hedef = _sonKaydedilenExcel;
-            }
-
-            if (string.IsNullOrEmpty(hedef) || !File.Exists(hedef))
-            {
-                // Manuel seç
-                var ofd = new OpenFileDialog { Title = "Excel dosyasını seçin", Filter = "Excel|*.xlsx;*.xls" };
-                if (ofd.ShowDialog() != DialogResult.OK) return;
-                hedef = ofd.FileName;
-            }
-
-            if (!DosyaErisebilir(hedef)) AgaBaglan();
-            try { System.Diagnostics.Process.Start(hedef); }
-            catch (Exception ex) { MessageBox.Show("Açılamadı: " + ex.Message); }
+            string hedef = HedefExceliBul();
+            if (string.IsNullOrEmpty(hedef)) return;
+            ExcelDosyasiniAc(hedef);
         }
+
+        private void btnMalzemeDegistir_Click(object sender, EventArgs e)
+        {
+            string hedef = HedefExceliBul();
+            if (string.IsNullOrEmpty(hedef)) return;
+
+            using (var frm = new FrmMalzemeDegistir(hedef, AgaBaglan, AgaBaglantiyiKes))
+            {
+                frm.StartPosition = FormStartPosition.CenterParent;
+                if (frm.ShowDialog(this) == DialogResult.OK && !string.IsNullOrEmpty(frm.YeniExcelYolu))
+                {
+                    _sonKaydedilenExcel = frm.YeniExcelYolu;
+                    var eslesenDosyalar = _erpExcelYollari
+                        .Where(kv => string.Equals(kv.Value, hedef, StringComparison.OrdinalIgnoreCase))
+                        .Select(kv => kv.Key)
+                        .ToList();
+
+                    foreach (string y in eslesenDosyalar)
+                    {
+                        _erpExcelYollari[y] = frm.YeniExcelYolu;
+                        DurumSatiriGuncelle(y, "🔧 Malzeme Revizyonu Yapıldı");
+                    }
+
+                    if (eslesenDosyalar.Count == 0 && _sagKlikSatir >= 0 && _sagKlikSatir < dgvDosyalar.Rows.Count)
+                    {
+                        string y = dgvDosyalar.Rows[_sagKlikSatir].Cells["colDosyaYolu"].Value?.ToString() ?? "";
+                        if (!string.IsNullOrEmpty(y))
+                        {
+                            _erpExcelYollari[y] = frm.YeniExcelYolu;
+                            DurumSatiriGuncelle(y, "🔧 Malzeme Revizyonu Yapıldı");
+                        }
+                    }
+                    DurumGuncelle();
+                }
+            }
+        }
+
+        private void mnuMalzemeDegistir_Click(object sender, EventArgs e)
+            => btnMalzemeDegistir_Click(sender, e);
 
         // ────────────────────────────────────────────────────────────────
         //  Rota Gir
@@ -990,6 +1022,40 @@ namespace BaranYardimci
         private void AgaBaglantiyiKes() { try { WNetCancelConnection2(NET_PATH, 0, false); } catch { } }
         private bool DosyaErisebilir(string yol) { if (string.IsNullOrEmpty(yol) || !File.Exists(yol)) return false; try { using (var fs = File.Open(yol, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)) return true; } catch { return false; } }
         private string KullanicidanExcelSec() { AgaBaglan(); var ofd = new OpenFileDialog { Title = "ERP Excel dosyasını seçin", Filter = "Excel Dosyaları|*.xlsx;*.xls", InitialDirectory = Directory.Exists(NET_PATH) ? NET_PATH : Environment.GetFolderPath(Environment.SpecialFolder.Desktop) }; return ofd.ShowDialog() == DialogResult.OK ? ofd.FileName : ""; }
+
+        private string HedefExceliBul()
+        {
+            string hedef = "";
+            if (_sagKlikSatir >= 0 && _sagKlikSatir < dgvDosyalar.Rows.Count)
+            {
+                string yol = dgvDosyalar.Rows[_sagKlikSatir].Cells["colDosyaYolu"].Value?.ToString() ?? "";
+                if (_erpExcelYollari.ContainsKey(yol)) hedef = _erpExcelYollari[yol];
+            }
+
+            if (string.IsNullOrEmpty(hedef) && !string.IsNullOrEmpty(_sonKaydedilenExcel))
+                hedef = _sonKaydedilenExcel;
+
+            if (string.IsNullOrEmpty(hedef) || !File.Exists(hedef))
+                hedef = KullanicidanExcelSec();
+
+            if (string.IsNullOrEmpty(hedef)) return "";
+            if (!DosyaErisebilir(hedef)) AgaBaglan();
+            if (!DosyaErisebilir(hedef))
+            {
+                MessageBox.Show("Excel dosyasına erişilemiyor:\n" + hedef, "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return "";
+            }
+            return hedef;
+        }
+
+        private void ExcelDosyasiniAc(string hedef)
+        {
+            if (string.IsNullOrEmpty(hedef)) return;
+            if (!DosyaErisebilir(hedef)) AgaBaglan();
+            if (!DosyaErisebilir(hedef)) { MessageBox.Show("Excel dosyasına erişilemiyor:\n" + hedef, "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error); return; }
+            try { System.Diagnostics.Process.Start(hedef); }
+            catch (Exception ex) { MessageBox.Show("Açılamadı: " + ex.Message); }
+        }
 
         private string AcExcelVeKaydet(string dosyaAdi, Action<Excel.Worksheet> yaz)
         {
