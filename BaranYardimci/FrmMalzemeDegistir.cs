@@ -13,6 +13,12 @@ namespace BaranYardimci
 {
     public partial class FrmMalzemeDegistir : Form
     {
+        private const int HR_PAYLASIM_IHLALI = unchecked((int)0x80070020);
+        private const int HR_ERISIM_ENGELLENDI = unchecked((int)0x80070005);
+        private static readonly Regex RevizyonRegex = new Regex(
+            @"^(.*)_ERPAKTARIM(\d+)\.xlsx$",
+            RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
         class MalzemeSatiri
         {
             public int ExcelSatirNo;
@@ -96,19 +102,7 @@ namespace BaranYardimci
 
             try
             {
-                AgErisiminiDene();
-                if (!DosyaErisebilir(_excelYolu) && !AgErisiminiDene())
-                {
-                    MessageBox.Show("Ağ bağlantısı kurulamadı.", "Ağ Hatası",
-                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
-                if (!DosyaErisebilir(_excelYolu))
-                {
-                    MessageBox.Show("Excel dosyasına erişilemiyor:\n" + _excelYolu,
-                        "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return;
-                }
+                if (!ExcelErisiminiHazirla(_excelYolu)) return;
 
                 app = new Excel.Application();
                 app.Visible = false;
@@ -197,6 +191,24 @@ namespace BaranYardimci
         {
             try { return _agaBaglan != null && _agaBaglan(); }
             catch { return false; }
+        }
+
+        private bool ExcelErisiminiHazirla(string yol)
+        {
+            bool agBagli = AgErisiminiDene();
+            if (!DosyaErisebilir(yol) && !agBagli)
+            {
+                MessageBox.Show("Ağ bağlantısı kurulamadı.", "Ağ Hatası",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return false;
+            }
+            if (!DosyaErisebilir(yol))
+            {
+                MessageBox.Show("Excel dosyasına erişilemiyor:\n" + yol,
+                    "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+            return true;
         }
 
         private string HammaddeAdiBul(string no)
@@ -294,13 +306,7 @@ namespace BaranYardimci
 
         private void btnExceliAc_Click(object sender, EventArgs e)
         {
-            if (!DosyaErisebilir(_excelYolu)) AgErisiminiDene();
-            if (!DosyaErisebilir(_excelYolu))
-            {
-                MessageBox.Show("Excel dosyasına erişilemiyor:\n" + _excelYolu,
-                    "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
+            if (!ExcelErisiminiHazirla(_excelYolu)) return;
             try { System.Diagnostics.Process.Start(_excelYolu); }
             catch (Exception ex) { MessageBox.Show("Excel açılamadı:\n" + ex.Message); }
         }
@@ -328,19 +334,7 @@ namespace BaranYardimci
 
             try
             {
-                AgErisiminiDene();
-                if (!DosyaErisebilir(_excelYolu) && !AgErisiminiDene())
-                {
-                    MessageBox.Show("Ağ bağlantısı kurulamadı.", "Ağ Hatası",
-                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
-                if (!DosyaErisebilir(_excelYolu))
-                {
-                    MessageBox.Show("Excel dosyasına erişilemiyor:\n" + _excelYolu,
-                        "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return;
-                }
+                if (!ExcelErisiminiHazirla(_excelYolu)) return;
 
                 string yeniYol = RevizyonluYolUret(_excelYolu);
                 if (string.IsNullOrEmpty(yeniYol)) return;
@@ -378,8 +372,8 @@ namespace BaranYardimci
             }
             catch (Exception ex)
             {
-                bool erisim = ex.HResult == unchecked((int)0x80070020)
-                    || ex.HResult == unchecked((int)0x80070005);
+                bool erisim = ex.HResult == HR_PAYLASIM_IHLALI
+                    || ex.HResult == HR_ERISIM_ENGELLENDI;
                 MessageBox.Show("Excel yazma hatası:" + (erisim ? "\nDosya açık olabilir." : "") + "\n\n" + ex.Message,
                     "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 try { if (wb != null) wb.Close(false); } catch { }
@@ -402,7 +396,7 @@ namespace BaranYardimci
             string klasor = Path.GetDirectoryName(mevcutYol);
             if (string.IsNullOrWhiteSpace(klasor)) klasor = Environment.CurrentDirectory;
             string dosyaAdi = Path.GetFileName(mevcutYol);
-            var m = Regex.Match(dosyaAdi ?? "", @"^(.*)_ERPAKTARIM(\d+)\.xlsx$", RegexOptions.IgnoreCase);
+            var m = RevizyonRegex.Match(dosyaAdi ?? "");
             int revNo = 2;
             string bazAd = Path.GetFileNameWithoutExtension(mevcutYol);
             if (m.Success)
