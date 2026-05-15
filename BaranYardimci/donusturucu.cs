@@ -84,6 +84,7 @@ namespace BaranYardimci
         private ToolStripMenuItem mnuMalzemeDegistir;
         private Panel pnlLegend;
         private Button btnExceliAc;
+        private Button btnTumExcel; // ← YENİ
 
         // ═══════════════════════════════════════════════════════════════════
         public Donusturucu()
@@ -139,6 +140,24 @@ namespace BaranYardimci
             btnExceliAc.FlatAppearance.BorderSize = 0;
             btnExceliAc.Click += btnExceliAc_Click;
             try { pnlSonucButonlar.Controls.Add(btnExceliAc); } catch { }
+
+            // ── YENİ: Tüm Excel Oluştur butonu ─────────────────────────────
+            btnTumExcel = new Button
+            {
+                Text = "📋  Tüm Excel Oluştur",
+                Dock = DockStyle.Right,
+                Width = 200,
+                Height = 47,
+                Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(100, 60, 160),
+                ForeColor = Color.White,
+                Cursor = Cursors.Hand
+            };
+            btnTumExcel.FlatAppearance.BorderSize = 0;
+            btnTumExcel.Click += btnTumExcel_Click;
+            try { pnlSonucButonlar.Controls.Add(btnTumExcel); } catch { }
+            // ────────────────────────────────────────────────────────────────
 
             if (ctxDosya == null) ctxDosya = new ContextMenuStrip { Font = new Font("Segoe UI", 10f) };
             ctxDosya.Items.Clear();
@@ -297,34 +316,41 @@ namespace BaranYardimci
             catch { }
         }
 
-        // ── DGV RENK ──────────────────────────────────────────────────────
+        // ── DGV RENK — FIX: e.CellStyle kullan, row.DefaultCellStyle değil ──
+        // Bu sayede her satır bağımsız renklenir, "yapışan" renk sorunu olmaz.
 
         private void dgvDosyalar_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
         {
             if (e.RowIndex < 0) return;
-            var row = dgvDosyalar.Rows[e.RowIndex];
-            string yol = row.Cells["colDosyaYolu"].Value?.ToString() ?? "";
+            string yol = dgvDosyalar.Rows[e.RowIndex].Cells["colDosyaYolu"].Value?.ToString() ?? "";
+
+            Color bg, fg, selBg, selFg;
 
             if (_civataEklendi.Contains(yol))
             {
-                row.DefaultCellStyle.BackColor = Color.FromArgb(180, 240, 200); row.DefaultCellStyle.ForeColor = Color.FromArgb(0, 90, 0);
-                row.DefaultCellStyle.SelectionBackColor = Color.FromArgb(140, 210, 160); row.DefaultCellStyle.SelectionForeColor = Color.FromArgb(0, 60, 0);
+                bg = Color.FromArgb(180, 240, 200); fg = Color.FromArgb(0, 90, 0);
+                selBg = Color.FromArgb(140, 210, 160); selFg = Color.FromArgb(0, 60, 0);
             }
             else if (_rotaKaydedilen.Contains(yol))
             {
-                row.DefaultCellStyle.BackColor = Color.FromArgb(180, 210, 255); row.DefaultCellStyle.ForeColor = Color.FromArgb(0, 50, 130);
-                row.DefaultCellStyle.SelectionBackColor = Color.FromArgb(140, 175, 230); row.DefaultCellStyle.SelectionForeColor = Color.FromArgb(0, 30, 100);
+                bg = Color.FromArgb(180, 210, 255); fg = Color.FromArgb(0, 50, 130);
+                selBg = Color.FromArgb(140, 175, 230); selFg = Color.FromArgb(0, 30, 100);
             }
             else if (_erpAktarimYapilan.Contains(yol))
             {
-                row.DefaultCellStyle.BackColor = Color.FromArgb(255, 243, 180); row.DefaultCellStyle.ForeColor = Color.FromArgb(110, 80, 0);
-                row.DefaultCellStyle.SelectionBackColor = Color.FromArgb(220, 205, 130); row.DefaultCellStyle.SelectionForeColor = Color.FromArgb(80, 55, 0);
+                bg = Color.FromArgb(255, 243, 180); fg = Color.FromArgb(110, 80, 0);
+                selBg = Color.FromArgb(220, 205, 130); selFg = Color.FromArgb(80, 55, 0);
             }
             else
             {
-                row.DefaultCellStyle.BackColor = Color.FromArgb(255, 200, 200); row.DefaultCellStyle.ForeColor = Color.FromArgb(120, 0, 0);
-                row.DefaultCellStyle.SelectionBackColor = Color.FromArgb(220, 160, 160); row.DefaultCellStyle.SelectionForeColor = Color.FromArgb(80, 0, 0);
+                bg = Color.FromArgb(255, 200, 200); fg = Color.FromArgb(120, 0, 0);
+                selBg = Color.FromArgb(220, 160, 160); selFg = Color.FromArgb(80, 0, 0);
             }
+
+            e.CellStyle.BackColor = bg;
+            e.CellStyle.ForeColor = fg;
+            e.CellStyle.SelectionBackColor = selBg;
+            e.CellStyle.SelectionForeColor = selFg;
         }
 
         private void dgvDosyalar_MouseUp(object sender, MouseEventArgs e)
@@ -649,7 +675,19 @@ namespace BaranYardimci
                 if (n > 0) { dgvDosyalar.Rows.Add(ad, "1", yol, "Yüklendi"); ok++; top += n; }
                 else MessageBox.Show("Okunamadi: " + ad);
             }
-            if (ok > 0) { MessageBox.Show(ok + " dosya, " + top + " parça."); DurumGuncelle(); }
+            if (ok > 0)
+            {
+                DurumGuncelle();
+                // ── YENİ UYARI MESAJI ──────────────────────────────────────
+                MessageBox.Show(
+                    $"✅  {ok} dosya yüklendi, {top} parça okundu.\n\n" +
+                    "Lütfen önce bu üründen kaç adet sipariş verildiğini giriniz\n" +
+                    "ve sonrasında  💾 Miktar Kaydet  butonuna tıklayınız.",
+                    "Dosya Yüklendi",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                // ────────────────────────────────────────────────────────────
+            }
         }
 
         private bool DosyaVarMi(string yol)
@@ -710,8 +748,6 @@ namespace BaranYardimci
             Cursor.Current = Cursors.Default; MessageBox.Show("Tamam.");
         }
 
-        // ── btnVeritabaniKaydet — DÜZELTME: anonymous type yerine SqlParameter ──
-
         private void btnVeritabaniKaydet_Click(object sender, EventArgs e)
         {
             if (_tumVeriler.Count == 0) { MessageBox.Show("Veri yok!"); return; }
@@ -746,7 +782,6 @@ namespace BaranYardimci
                     {
                         double sip = sm.ContainsKey(v.DosyaId) ? sm[v.DosyaId] : 1;
                         double urt = sip * v.MontajAdeti * v.BirimAdet;
-
                         using (var cmd = new SqlCommand(sql, conn))
                         {
                             cmd.Parameters.AddWithValue("@mid", musteriID);
@@ -771,7 +806,7 @@ namespace BaranYardimci
             finally { Cursor.Current = Cursors.Default; }
         }
 
-        // ── ERP AKTARİM ───────────────────────────────────────────        // ── ERP AKTARİM ───────────────────────────────────────────────────
+        // ── ERP AKTARİM ───────────────────────────────────────────────────
 
         private void btnErpAktarim_Click(object sender, EventArgs e)
         {
@@ -823,47 +858,16 @@ namespace BaranYardimci
             foreach (var oz in ozet.Values)
             {
                 string key = oz.Profil + "|" + oz.Kalite;
-                // ── GELİŞTİRİLMİŞ EŞLEŞTİRME ─────────────────────────────
-                // Sıra: 1) Tam eşit  2) No tam eşit  3) StartsWith  4) Contains
                 string profNorm = oz.Profil.ToUpper().Replace(" ", "").Replace("-", "");
                 HammaddeItem bulunan = null;
 
-                // 1. Adi tam eşit (boşluk/tire normalize)
-                bulunan = hm.FirstOrDefault(h =>
-                    h.Adi.ToUpper().Replace(" ", "").Replace("-", "") == profNorm);
+                bulunan = hm.FirstOrDefault(h => h.Adi.ToUpper().Replace(" ", "").Replace("-", "") == profNorm);
+                if (bulunan == null) bulunan = hm.FirstOrDefault(h => h.No.ToUpper().Replace(" ", "").Replace("-", "") == profNorm);
+                if (bulunan == null) { string prefix = profNorm.TrimEnd('*'); bulunan = hm.FirstOrDefault(h => h.Adi.ToUpper().Replace(" ", "").Replace("-", "").StartsWith(prefix) && prefix.Length >= 2); }
+                if (bulunan == null && profNorm.Length >= 3) bulunan = hm.FirstOrDefault(h => h.Adi.ToUpper().Replace(" ", "").Replace("-", "").Contains(profNorm) || profNorm.Contains(h.Adi.ToUpper().Replace(" ", "").Replace("-", "")) && h.Adi.Length >= 3);
 
-                // 2. No tam eşit
-                if (bulunan == null)
-                    bulunan = hm.FirstOrDefault(h =>
-                        h.No.ToUpper().Replace(" ", "").Replace("-", "") == profNorm);
-
-                // 3. Adi StartsWith (PL*, HEA, IPE vb. prefix eşleşmesi)
-                if (bulunan == null)
-                {
-                    string prefix = profNorm.TrimEnd('*');
-                    bulunan = hm.FirstOrDefault(h =>
-                        h.Adi.ToUpper().Replace(" ", "").Replace("-", "").StartsWith(prefix)
-                        && prefix.Length >= 2);
-                }
-
-                // 4. Adi Contains
-                if (bulunan == null && profNorm.Length >= 3)
-                    bulunan = hm.FirstOrDefault(h =>
-                        h.Adi.ToUpper().Replace(" ", "").Replace("-", "").Contains(profNorm)
-                        || profNorm.Contains(h.Adi.ToUpper().Replace(" ", "").Replace("-", ""))
-                           && h.Adi.Length >= 3);
-
-                if (bulunan != null)
-                    esles[key] = bulunan;
-                else
-                    bulunamadi.Add(new BulunamadiItem
-                    {
-                        Profil = oz.Profil,
-                        Kalite = oz.Kalite,
-                        ToplamAdet = oz.ToplamAdet,
-                        ToplamAgirlik = Math.Round(oz.ToplamAgirlik, 2),
-                        Satirlar = profilSatirlar.ContainsKey(key) ? profilSatirlar[key] : new List<string>()
-                    });
+                if (bulunan != null) esles[key] = bulunan;
+                else bulunamadi.Add(new BulunamadiItem { Profil = oz.Profil, Kalite = oz.Kalite, ToplamAdet = oz.ToplamAdet, ToplamAgirlik = Math.Round(oz.ToplamAgirlik, 2), Satirlar = profilSatirlar.ContainsKey(key) ? profilSatirlar[key] : new List<string>() });
             }
 
             if (bulunamadi.Count > 0)
@@ -872,8 +876,7 @@ namespace BaranYardimci
                 {
                     frm.StartPosition = FormStartPosition.CenterParent;
                     if (frm.ShowDialog(this) != DialogResult.OK) return;
-                    foreach (var kv in frm.Sonuclar)
-                        esles[kv.Key] = new HammaddeItem { No = kv.Value.No, Adi = kv.Value.Ad };
+                    foreach (var kv in frm.Sonuclar) esles[kv.Key] = new HammaddeItem { No = kv.Value.No, Adi = kv.Value.Ad };
                 }
             }
 
@@ -946,6 +949,69 @@ namespace BaranYardimci
             }
         }
 
+        // ── TÜM EXCEL OLUŞTUR ─────────────────────────────────────────────
+
+        private void btnTumExcel_Click(object sender, EventArgs e)
+        {
+            if (_tumVeriler.Count == 0) { MessageBox.Show("Önce dosya yükleyin!", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+            dgvDosyalar.EndEdit();
+            var sm = SM();
+
+            string ciktiAdi = "TUM_DOSYALAR_" + DateTime.Now.ToString("yyyyMMdd_HHmm") + ".xlsx";
+
+            AcExcelVeKaydet(ciktiAdi, ws =>
+            {
+                // Başlık satırı
+                string[] headers = { "Dosya", "Montaj No", "Montaj Adeti", "Parça No", "Profil", "Kalite", "Uzunluk (mm)", "Birim Ağırlık (kg)", "Sipariş Adeti", "Üretim Adeti", "Toplam Ağırlık (kg)" };
+                for (int i = 0; i < headers.Length; i++)
+                    S(ws, 1, i + 1, headers[i], bold: true, bg: RenkBaslik, fg: RenkBeyaz, center: true);
+                try { ((Excel.Range)ws.Rows[1]).RowHeight = 22; } catch { }
+
+                int row = 2, sNo = 0;
+                foreach (var docGroup in _tumVeriler.GroupBy(v => v.DosyaId).OrderBy(g => g.Key))
+                {
+                    double sip = sm.ContainsKey(docGroup.Key) ? sm[docGroup.Key] : 1;
+                    string docAdi = docGroup.First().DosyaAdi;
+
+                    // Dosya bölüm başlığı
+                    S(ws, row, 1, "📄  " + docAdi + "   —   Sipariş: " + sip + " adet",
+                        bold: true, bg: RenkMavi, fg: RenkBeyaz);
+                    try { ((Excel.Range)ws.Range[ws.Cells[row, 1], ws.Cells[row, 11]]).Merge(); } catch { }
+                    try { ((Excel.Range)ws.Rows[row]).RowHeight = 22; } catch { }
+                    row++;
+
+                    foreach (var v in docGroup.OrderBy(x => x.MontajNo).ThenBy(x => x.ParcaNo))
+                    {
+                        double urt = sip * v.MontajAdeti * v.BirimAdet;
+                        int rowBg = sNo % 2 == 0 ? RenkBeyaz : RenkGri;
+                        S(ws, row, 1, v.DosyaAdi, bg: rowBg);
+                        S(ws, row, 2, v.MontajNo, bg: rowBg);
+                        S(ws, row, 3, v.MontajAdeti, bg: rowBg);
+                        S(ws, row, 4, v.ParcaNo, bg: rowBg);
+                        S(ws, row, 5, PG(v.ParcaProfil), bg: rowBg);
+                        S(ws, row, 6, KD(v.Kalite), bg: rowBg);
+                        S(ws, row, 7, v.Uzunluk, bg: rowBg);
+                        S(ws, row, 8, v.Agirlik, bg: rowBg);
+                        S(ws, row, 9, sip, bg: rowBg);
+                        S(ws, row, 10, Math.Round(urt, 2), bg: rowBg);
+                        S(ws, row, 11, Math.Round(urt * v.Agirlik, 3), bg: rowBg);
+                        row++; sNo++;
+                    }
+                    row++; // dosyalar arası boşluk
+                }
+
+                // Sütun genişlikleri
+                try
+                {
+                    int[] w = { 24, 14, 12, 14, 18, 10, 14, 16, 12, 13, 18 };
+                    for (int i = 0; i < w.Length; i++) ((Excel.Range)ws.Columns[i + 1]).ColumnWidth = w[i];
+                }
+                catch { }
+            });
+        }
+
+        // ─────────────────────────────────────────────────────────────────
+
         private void btnGalvanizEkran_Click(object sender, EventArgs e) => new GalvanizKontrol().Show();
 
         private void btnHamDataExcel_Click(object sender, EventArgs e)
@@ -1007,7 +1073,7 @@ namespace BaranYardimci
                 for (int i = 0; i < h2.Length; i++) S(ws, row, i + 1, h2[i], bold: true, bg: RenkMavi, fg: RenkBeyaz, center: true); try { ((Excel.Range)ws.Columns[8]).ColumnWidth = 70; } catch { }
                 H(ws, row, 20); row++; sNo = 0;
                 foreach (var s in sonuclar) { string boyStr = (s.OnerilenBoy / 1000.0).ToString("0.0") + " m"; foreach (var bar in s.OnerilenBarlar) { string pstr = string.Join("  |  ", bar.Dilimler.Select(d => $"{d.ParcaNo} {d.Uzunluk}mm×{d.Adet}")); int rowBg = sNo % 2 == 0 ? RenkBeyaz : RenkGri; int fireBg = bar.FirePct > 20 ? RenkKirmizi : bar.FirePct > 10 ? RenkSari : RenkYesil; S(ws, row, 1, s.Profil, bg: rowBg); S(ws, row, 2, s.Kalite, bg: rowBg); S(ws, row, 3, boyStr, bg: rowBg, center: true); S(ws, row, 4, bar.BarNo, bg: rowBg, center: true); S(ws, row, 5, Math.Round(bar.Kullanilan, 1), bg: rowBg); S(ws, row, 6, Math.Round(bar.Fire, 1), bg: fireBg); S(ws, row, 7, Math.Round(bar.FirePct, 1), bg: fireBg); S(ws, row, 8, pstr, bg: rowBg); row++; } sNo++; }
-                app.Visible = true;
+                app.Visible = true; // Bu Excel görünür olsun — malzeme analizi
             }
             catch (Exception ex) { MessageBox.Show("Excel Hatasi: " + ex.Message); try { if (wb != null) wb.Close(false); } catch { } try { if (app != null) app.Quit(); } catch { } }
             finally { try { if (wb != null) Marshal.ReleaseComObject(wb); } catch { } try { if (app != null) Marshal.ReleaseComObject(app); } catch { } GC.Collect(); GC.WaitForPendingFinalizers(); Cursor.Current = Cursors.Default; }
@@ -1025,8 +1091,20 @@ namespace BaranYardimci
 
         private bool AgaBaglan() { var nr = new NETRESOURCE { dwType = 1, lpRemoteName = NET_PATH }; int ret = WNetAddConnection2(ref nr, NET_PASS, NET_USER, 0); return ret == 0 || ret == 1219; }
         private void AgaBaglantiyiKes() { try { WNetCancelConnection2(NET_PATH, 0, false); } catch { } }
-        private bool DosyaErisebilir(string yol) { if (string.IsNullOrEmpty(yol) || !File.Exists(yol)) return false; try { using (var fs = File.Open(yol, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)) return true; } catch { return false; } }
-        private string KullanicidanExcelSec() { AgaBaglan(); var ofd = new OpenFileDialog { Title = "ERP Excel dosyasını seçin", Filter = "Excel Dosyaları|*.xlsx;*.xls", InitialDirectory = Directory.Exists(NET_PATH) ? NET_PATH : "" }; return ofd.ShowDialog() == DialogResult.OK ? ofd.FileName : ""; }
+        // Bu metodları Donusturucu.cs içindeki son } öncesine ekle
+
+        private bool DosyaErisebilir(string yol)
+        {
+            if (string.IsNullOrEmpty(yol) || !File.Exists(yol)) return false;
+            try { using (var fs = File.Open(yol, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)) return true; } catch { return false; }
+        }
+
+        private string KullanicidanExcelSec()
+        {
+            AgaBaglan();
+            var ofd = new OpenFileDialog { Title = "ERP Excel dosyasını seçin", Filter = "Excel Dosyaları|*.xlsx;*.xls", InitialDirectory = Directory.Exists(NET_PATH) ? NET_PATH : "" };
+            return ofd.ShowDialog() == DialogResult.OK ? ofd.FileName : "";
+        }
 
         private string AcExcelVeKaydet(string dosyaAdi, Action<Excel.Worksheet> yaz)
         {
@@ -1034,34 +1112,84 @@ namespace BaranYardimci
             Excel.Application app = null; Excel.Workbook wb = null; Excel.Worksheet ws = null;
             try
             {
-                app = new Excel.Application(); app.Visible = false; app.DisplayAlerts = false; wb = app.Workbooks.Add(Type.Missing); ws = (Excel.Worksheet)wb.ActiveSheet; yaz(ws);
+                app = new Excel.Application(); app.Visible = false; app.DisplayAlerts = false;
+                wb = app.Workbooks.Add(Type.Missing); ws = (Excel.Worksheet)wb.ActiveSheet; yaz(ws);
                 if (!AgaBaglan()) { MessageBox.Show("Ağ bağlantısı kurulamadı!\n" + NET_PATH, "Ağ Hatası", MessageBoxButtons.OK, MessageBoxIcon.Warning); app.Visible = true; return ""; }
                 string hedefYol = Path.Combine(NET_PATH, dosyaAdi);
-                if (File.Exists(hedefYol)) { var cevap = MessageBox.Show($"📄 {dosyaAdi}\n\nÜzerine yazılsın mı?", "Dosya Zaten Var", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question); if (cevap == DialogResult.Cancel) { app.Visible = true; return ""; } if (cevap == DialogResult.No) { var sfd = new SaveFileDialog { Title = "Farklı kaydet", Filter = "Excel|*.xlsx", FileName = dosyaAdi }; if (sfd.ShowDialog() != DialogResult.OK) { app.Visible = true; return ""; } hedefYol = sfd.FileName; } }
+                if (File.Exists(hedefYol))
+                {
+                    var cevap = MessageBox.Show($"📄 {dosyaAdi}\n\nÜzerine yazılsın mı?", "Dosya Zaten Var", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
+                    if (cevap == DialogResult.Cancel) { app.Visible = true; return ""; }
+                    if (cevap == DialogResult.No) { var sfd = new SaveFileDialog { Title = "Farklı kaydet", Filter = "Excel|*.xlsx", FileName = dosyaAdi }; if (sfd.ShowDialog() != DialogResult.OK) { app.Visible = true; return ""; } hedefYol = sfd.FileName; }
+                }
                 wb.SaveAs(hedefYol, Excel.XlFileFormat.xlOpenXMLWorkbook, Type.Missing, Type.Missing, false, false, Excel.XlSaveAsAccessMode.xlNoChange, Type.Missing, Type.Missing, Type.Missing, Type.Missing, Type.Missing);
-                kaydedilenYol = hedefYol; MessageBox.Show("Excel kaydedildi:\n" + hedefYol, "Başarılı", MessageBoxButtons.OK, MessageBoxIcon.Information); app.Visible = true;
+                kaydedilenYol = hedefYol;
+                // ERP aktarım sonrası Excel AÇILMIYOR — sadece bilgi mesajı
+                MessageBox.Show("Excel kaydedildi:\n" + hedefYol + "\n\nExceli görmek için sağ tık → Exceli Göster veya 📂 Exceli Aç butonunu kullanın.", "Kaydedildi", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
-            catch (Exception ex) { bool erisim = ex.HResult == unchecked((int)0x80070020) || ex.HResult == unchecked((int)0x80070005); MessageBox.Show("Excel kaydetme hatası:" + (erisim ? "\nDosya açık olabilir." : "") + "\n\n" + ex.Message); try { if (app != null) app.Visible = true; } catch { } }
-            finally { AgaBaglantiyiKes(); try { if (ws != null) Marshal.ReleaseComObject(ws); } catch { } try { if (wb != null) Marshal.ReleaseComObject(wb); } catch { } try { if (app != null) Marshal.ReleaseComObject(app); } catch { } GC.Collect(); GC.WaitForPendingFinalizers(); Cursor.Current = Cursors.Default; }
+            catch (Exception ex)
+            {
+                bool erisim = ex.HResult == unchecked((int)0x80070020) || ex.HResult == unchecked((int)0x80070005);
+                MessageBox.Show("Excel kaydetme hatası:" + (erisim ? "\nDosya açık olabilir." : "") + "\n\n" + ex.Message);
+                try { if (app != null) app.Visible = true; } catch { }
+            }
+            finally
+            {
+                AgaBaglantiyiKes();
+                try { if (ws != null) Marshal.ReleaseComObject(ws); } catch { }
+                try { if (wb != null) { wb.Close(false); Marshal.ReleaseComObject(wb); } } catch { }
+                try { if (app != null) { app.Quit(); Marshal.ReleaseComObject(app); } } catch { }
+                GC.Collect(); GC.WaitForPendingFinalizers();
+                Cursor.Current = Cursors.Default;
+            }
             return kaydedilenYol;
         }
 
         private void AcExcel(Action<Excel.Worksheet> yaz)
         {
-            Cursor.Current = Cursors.WaitCursor; Excel.Application app = null; Excel.Workbook wb = null; Excel.Worksheet ws = null;
-            try { app = new Excel.Application(); app.Visible = false; app.DisplayAlerts = false; wb = app.Workbooks.Add(Type.Missing); ws = (Excel.Worksheet)wb.ActiveSheet; yaz(ws); app.Visible = true; }
+            Cursor.Current = Cursors.WaitCursor;
+            Excel.Application app = null; Excel.Workbook wb = null; Excel.Worksheet ws = null;
+            try
+            {
+                app = new Excel.Application(); app.Visible = false; app.DisplayAlerts = false;
+                wb = app.Workbooks.Add(Type.Missing); ws = (Excel.Worksheet)wb.ActiveSheet; yaz(ws);
+                app.Visible = true;
+            }
             catch (Exception ex) { MessageBox.Show("Excel: " + ex.Message); try { if (wb != null) wb.Close(false); } catch { } try { if (app != null) app.Quit(); } catch { } }
             finally { try { if (ws != null) Marshal.ReleaseComObject(ws); } catch { } try { if (wb != null) Marshal.ReleaseComObject(wb); } catch { } try { if (app != null) Marshal.ReleaseComObject(app); } catch { } GC.Collect(); GC.WaitForPendingFinalizers(); Cursor.Current = Cursors.Default; }
         }
 
-        private void S(Excel.Worksheet ws, int r, int c, object v, bool bold = false, int bg = 0, int fg = 0, bool center = false, int size = 0) { try { var cell = (Excel.Range)ws.Cells[r, c]; if (v != null) cell.Value2 = v; if (bold) cell.Font.Bold = true; if (bg != 0) cell.Interior.Color = bg; if (fg != 0) cell.Font.Color = fg; if (center) cell.HorizontalAlignment = Excel.XlHAlign.xlHAlignCenter; if (size > 0) cell.Font.Size = size; } catch { } }
-        private void H(Excel.Worksheet ws, int r, double h) { try { ((Excel.Range)ws.Rows[r]).RowHeight = h; } catch { } }
-        private void Yaz(Excel.Worksheet ws, int r, int c, object v) { try { if (v != null) ((Excel.Range)ws.Cells[r, c]).Value2 = v; } catch { } }
+        private void S(Excel.Worksheet ws, int r, int c, object v, bool bold = false, int bg = 0, int fg = 0, bool center = false, int size = 0)
+        { try { var cell = (Excel.Range)ws.Cells[r, c]; if (v != null) cell.Value2 = v; if (bold) cell.Font.Bold = true; if (bg != 0) cell.Interior.Color = bg; if (fg != 0) cell.Font.Color = fg; if (center) cell.HorizontalAlignment = Excel.XlHAlign.xlHAlignCenter; if (size > 0) cell.Font.Size = size; } catch { } }
 
-        private Dictionary<string, double> SM() { var map = new Dictionary<string, double>(); foreach (DataGridViewRow r in dgvDosyalar.Rows) { string yol = r.Cells["colDosyaYolu"].Value?.ToString() ?? ""; double sip = N(r.Cells["colSiparisAdeti"].Value); map[yol] = sip > 0 ? sip : 1; } return map; }
-        private Dictionary<string, MalzemeOzet> Ozet(Dictionary<string, double> sm) { var ozet = new Dictionary<string, MalzemeOzet>(StringComparer.OrdinalIgnoreCase); foreach (var v in _tumVeriler) { string key = PG(v.ParcaProfil) + "|" + KD(v.Kalite); double sip = sm.ContainsKey(v.DosyaId) ? sm[v.DosyaId] : 1; double urt = sip * v.MontajAdeti * v.BirimAdet; if (!ozet.ContainsKey(key)) ozet[key] = new MalzemeOzet { Profil = PG(v.ParcaProfil), Kalite = KD(v.Kalite) }; ozet[key].ToplamAdet += urt; ozet[key].ToplamUzunluk += urt * v.Uzunluk; ozet[key].ToplamAgirlik += urt * v.Agirlik; } return ozet; }
+        private void H(Excel.Worksheet ws, int r, double h)
+        { try { ((Excel.Range)ws.Rows[r]).RowHeight = h; } catch { } }
+
+        private void Yaz(Excel.Worksheet ws, int r, int c, object v)
+        { try { if (v != null) ((Excel.Range)ws.Cells[r, c]).Value2 = v; } catch { } }
+
+        private Dictionary<string, double> SM()
+        {
+            var map = new Dictionary<string, double>();
+            foreach (DataGridViewRow r in dgvDosyalar.Rows) { string yol = r.Cells["colDosyaYolu"].Value?.ToString() ?? ""; double sip = N(r.Cells["colSiparisAdeti"].Value); map[yol] = sip > 0 ? sip : 1; }
+            return map;
+        }
+
+        private Dictionary<string, MalzemeOzet> Ozet(Dictionary<string, double> sm)
+        {
+            var ozet = new Dictionary<string, MalzemeOzet>(StringComparer.OrdinalIgnoreCase);
+            foreach (var v in _tumVeriler) { string key = PG(v.ParcaProfil) + "|" + KD(v.Kalite); double sip = sm.ContainsKey(v.DosyaId) ? sm[v.DosyaId] : 1; double urt = sip * v.MontajAdeti * v.BirimAdet; if (!ozet.ContainsKey(key)) ozet[key] = new MalzemeOzet { Profil = PG(v.ParcaProfil), Kalite = KD(v.Kalite) }; ozet[key].ToplamAdet += urt; ozet[key].ToplamUzunluk += urt * v.Uzunluk; ozet[key].ToplamAgirlik += urt * v.Agirlik; }
+            return ozet;
+        }
+
         private bool IsNum(string v) { double d; return double.TryParse(v?.Trim(), NumberStyles.Any, CultureInfo.InvariantCulture, out d) || double.TryParse(v?.Trim(), NumberStyles.Any, CultureInfo.CurrentCulture, out d); }
-        private double N(object o) { if (o == null) return 0; string s = o.ToString().Trim(); if (string.IsNullOrEmpty(s)) return 0; if (s.Contains(",") && s.Contains(".")) { int a = s.LastIndexOf(','); int b = s.LastIndexOf('.'); s = a > b ? s.Replace(".", "") : s.Replace(",", ""); } double d; if (double.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out d)) return d; if (double.TryParse(s, NumberStyles.Any, CultureInfo.CurrentCulture, out d)) return d; return 0; }
+
+        private double N(object o)
+        {
+            if (o == null) return 0; string s = o.ToString().Trim(); if (string.IsNullOrEmpty(s)) return 0;
+            if (s.Contains(",") && s.Contains(".")) { int a = s.LastIndexOf(','); int b = s.LastIndexOf('.'); s = a > b ? s.Replace(".", "") : s.Replace(",", ""); }
+            double d; if (double.TryParse(s, NumberStyles.Any, CultureInfo.InvariantCulture, out d)) return d; if (double.TryParse(s, NumberStyles.Any, CultureInfo.CurrentCulture, out d)) return d; return 0;
+        }
 
         private void dgvSonuc_CellContentClick(object sender, DataGridViewCellEventArgs e) { }
     }

@@ -33,7 +33,6 @@ namespace BaranYardimci
         private string _secilenHmNo = "";
         private string _secilenHmAdi = "";
 
-        // UI — SplitContainer YOK, sağ panel sabit 380px Panel
         private Panel pnlUst, pnlAlt, pnlSag, pnlSecilenBar, pnlIcerik;
         private DataGridView dgv;
         private Label lblBaslik, lblDurum, lblSagBaslik, lblMevcutDeger, lblSecilenBaslik, lblSecilenKod;
@@ -52,26 +51,24 @@ namespace BaranYardimci
             ExcelOku();
         }
 
-        // ══════════════════════════════════════════════════════════════════
-        //  FORM YAPISI  —  SplitContainer YOK, SplitterDistance YOK
-        // ══════════════════════════════════════════════════════════════════
         private void InitForm()
         {
             this.Text = "Malzeme Değiştir  —  " + Path.GetFileName(_excelYolu);
             this.Size = new Size(1400, 820);
             this.MinimumSize = new Size(800, 500);
             this.StartPosition = FormStartPosition.CenterParent;
+            this.WindowState = FormWindowState.Maximized;
             this.BackColor = Color.FromArgb(28, 28, 34);
             this.Font = new Font("Segoe UI", 9.5f);
 
-            // ── ÜST BAR ──────────────────────────────────────────────────
+            // ÜST
             pnlUst = new Panel { Dock = DockStyle.Top, Height = 54, BackColor = Color.FromArgb(22, 22, 28), Padding = new Padding(12, 6, 12, 6) };
             lblBaslik = new Label { Dock = DockStyle.Left, Width = 700, Font = new Font("Segoe UI", 12f, FontStyle.Bold), ForeColor = Color.FromArgb(100, 200, 255), Text = "📋  ERP Excel — Malzeme Değiştir", TextAlign = ContentAlignment.MiddleLeft };
             lblDurum = new Label { Dock = DockStyle.Fill, Font = new Font("Segoe UI", 9.5f, FontStyle.Italic), ForeColor = Color.FromArgb(160, 170, 180), Text = "Yükleniyor...", TextAlign = ContentAlignment.MiddleRight };
             pnlUst.Controls.Add(lblDurum);
             pnlUst.Controls.Add(lblBaslik);
 
-            // ── ALT BAR ──────────────────────────────────────────────────
+            // ALT
             pnlAlt = new Panel { Dock = DockStyle.Bottom, Height = 54, BackColor = Color.FromArgb(22, 22, 28), Padding = new Padding(12, 8, 12, 8) };
             btnKaydet = MkBtn("💾  Kaydet", Color.FromArgb(0, 150, 100), DockStyle.Right, 160);
             btnIptal = MkBtn("✖  İptal", Color.FromArgb(120, 50, 50), DockStyle.Right, 120);
@@ -83,24 +80,17 @@ namespace BaranYardimci
             pnlAlt.Controls.Add(btnIptal);
             pnlAlt.Controls.Add(btnLogGoster);
 
-            // ── İÇERİK ALANI (Top/Bottom/Left/Right hepsi dolu) ──────────
+            // İÇERİK
             pnlIcerik = new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(28, 28, 34) };
 
-            // ── SAĞ PANEL — sabit 400px, Dock=Right ──────────────────────
-            pnlSag = new Panel
-            {
-                Dock = DockStyle.Right,
-                Width = 400,
-                BackColor = Color.FromArgb(32, 36, 48),
-                Padding = new Padding(10, 10, 10, 6)
-            };
+            // SAĞ PANEL — sabit genişlik, SplitContainer YOK
+            pnlSag = new Panel { Dock = DockStyle.Right, Width = 420, BackColor = Color.FromArgb(32, 36, 48), Padding = new Padding(10, 10, 10, 6) };
 
             lblSagBaslik = new Label { Dock = DockStyle.Top, Height = 36, Font = new Font("Segoe UI", 12f, FontStyle.Bold), ForeColor = Color.FromArgb(100, 180, 255), Text = "🔍  Hammadde Ara", TextAlign = ContentAlignment.MiddleLeft };
             lblMevcutDeger = new Label { Dock = DockStyle.Top, Height = 30, Font = new Font("Segoe UI", 9.5f, FontStyle.Italic), ForeColor = Color.FromArgb(180, 180, 200), Text = "← Soldan bir 'Madde' satırına tıklayın", TextAlign = ContentAlignment.MiddleLeft };
             txtArama = new TextBox { Dock = DockStyle.Top, Height = 44, Font = new Font("Segoe UI", 14f), BackColor = Color.FromArgb(44, 48, 62), ForeColor = Color.White, BorderStyle = BorderStyle.FixedSingle };
             txtArama.TextChanged += txtArama_TextChanged;
 
-            // seçilen bar — altta sabit
             pnlSecilenBar = new Panel { Dock = DockStyle.Bottom, Height = 92, BackColor = Color.FromArgb(22, 50, 28), Padding = new Padding(12, 8, 12, 8) };
             lblSecilenBaslik = new Label { Dock = DockStyle.Top, Height = 22, Font = new Font("Segoe UI", 9f, FontStyle.Bold), ForeColor = Color.FromArgb(120, 220, 140), Text = "SEÇİLEN HAMMADDE:" };
             lblSecilenKod = new Label { Dock = DockStyle.Fill, Font = new Font("Segoe UI", 12f, FontStyle.Bold), ForeColor = Color.FromArgb(100, 240, 130), Text = "(seçilmedi)", TextAlign = ContentAlignment.MiddleLeft };
@@ -117,7 +107,6 @@ namespace BaranYardimci
             lvHammadde.SelectedIndexChanged += lvHammadde_SelectedIndexChanged;
             lvHammadde.DoubleClick += lvHammadde_DoubleClick;
 
-            // Dock sırası: Fill en son eklenmeli
             pnlSag.Controls.Add(lvHammadde);
             pnlSag.Controls.Add(pnlSecilenBar);
             pnlSag.Controls.Add(btnUygula);
@@ -125,7 +114,7 @@ namespace BaranYardimci
             pnlSag.Controls.Add(lblMevcutDeger);
             pnlSag.Controls.Add(lblSagBaslik);
 
-            // ── DGV — kalan tüm alanı kaplar ─────────────────────────────
+            // DGV
             dgv = new DataGridView
             {
                 Dock = DockStyle.Fill,
@@ -144,19 +133,22 @@ namespace BaranYardimci
                 RowTemplate = { Height = 26 },
                 ScrollBars = ScrollBars.Both
             };
+            // Seçim rengi: tamamen kendi kontrolümüzde — built-in seçim görünmez
             dgv.DefaultCellStyle.BackColor = Color.FromArgb(32, 32, 40);
             dgv.DefaultCellStyle.ForeColor = Color.FromArgb(210, 220, 235);
-            dgv.DefaultCellStyle.SelectionBackColor = Color.FromArgb(40, 80, 130);
-            dgv.DefaultCellStyle.SelectionForeColor = Color.White;
+            dgv.DefaultCellStyle.SelectionBackColor = Color.FromArgb(32, 32, 40);   // ← normal ile aynı
+            dgv.DefaultCellStyle.SelectionForeColor = Color.FromArgb(210, 220, 235); // ← normal ile aynı
             dgv.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(38, 42, 55);
             dgv.ColumnHeadersDefaultCellStyle.ForeColor = Color.FromArgb(180, 200, 230);
             dgv.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 9.5f, FontStyle.Bold);
             dgv.EnableHeadersVisualStyles = false;
             dgv.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(36, 36, 46);
+            dgv.AlternatingRowsDefaultCellStyle.SelectionBackColor = Color.FromArgb(36, 36, 46);
+            dgv.AlternatingRowsDefaultCellStyle.SelectionForeColor = Color.FromArgb(210, 220, 235);
             dgv.CellClick += dgv_CellClick;
             dgv.CellFormatting += dgv_CellFormatting;
 
-            // Sağ panel önce, sonra DGV (Fill)
+            // Sağ panel önce (Dock=Right), sonra DGV (Fill)
             pnlIcerik.Controls.Add(dgv);
             pnlIcerik.Controls.Add(pnlSag);
 
@@ -172,9 +164,6 @@ namespace BaranYardimci
             return b;
         }
 
-        // ══════════════════════════════════════════════════════════════════
-        //  VERİTABANI
-        // ══════════════════════════════════════════════════════════════════
         private void HammaddeleriYukle()
         {
             try
@@ -191,9 +180,6 @@ namespace BaranYardimci
             catch (Exception ex) { MessageBox.Show("Hammadde yüklenemedi:\n" + ex.Message, "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
         }
 
-        // ══════════════════════════════════════════════════════════════════
-        //  EXCEL OKU
-        // ══════════════════════════════════════════════════════════════════
         private void ExcelOku()
         {
             Excel.Application app = null; Excel.Workbook wb = null;
@@ -231,9 +217,6 @@ namespace BaranYardimci
             DgvOlustur();
         }
 
-        // ══════════════════════════════════════════════════════════════════
-        //  DGV
-        // ══════════════════════════════════════════════════════════════════
         private void DgvOlustur()
         {
             dgv.Columns.Clear();
@@ -249,8 +232,20 @@ namespace BaranYardimci
                 var row = dgv.Rows[rowIdx];
                 for (int c = 0; c < 10; c++) row.Cells[c].Value = dr[c].ToString();
                 row.Tag = madde ? "madde" : "diger";
-                if (madde) { row.DefaultCellStyle.BackColor = Color.FromArgb(30, 36, 52); row.DefaultCellStyle.ForeColor = Color.FromArgb(190, 215, 255); }
-                else { row.DefaultCellStyle.BackColor = Color.FromArgb(26, 26, 33); row.DefaultCellStyle.ForeColor = Color.FromArgb(110, 120, 140); }
+                if (madde)
+                {
+                    row.DefaultCellStyle.BackColor = Color.FromArgb(30, 36, 52);
+                    row.DefaultCellStyle.ForeColor = Color.FromArgb(190, 215, 255);
+                    row.DefaultCellStyle.SelectionBackColor = Color.FromArgb(30, 36, 52);
+                    row.DefaultCellStyle.SelectionForeColor = Color.FromArgb(190, 215, 255);
+                }
+                else
+                {
+                    row.DefaultCellStyle.BackColor = Color.FromArgb(26, 26, 33);
+                    row.DefaultCellStyle.ForeColor = Color.FromArgb(110, 120, 140);
+                    row.DefaultCellStyle.SelectionBackColor = Color.FromArgb(26, 26, 33);
+                    row.DefaultCellStyle.SelectionForeColor = Color.FromArgb(110, 120, 140);
+                }
             }
         }
 
@@ -260,7 +255,13 @@ namespace BaranYardimci
             var row = dgv.Rows[e.RowIndex];
             if (row.Tag?.ToString() != "madde") return;
 
+            int eskiSatir = _secilenSatir;
             _secilenSatir = e.RowIndex;
+
+            // Sadece değişen satırları yenile — tüm grid refresh yerine
+            if (eskiSatir >= 0 && eskiSatir < dgv.Rows.Count) dgv.InvalidateRow(eskiSatir);
+            dgv.InvalidateRow(_secilenSatir);
+
             string mevcutNo = row.Cells[COL_BILNO].Value?.ToString() ?? "";
             string pozNo = row.Cells[COL_POZNO].Value?.ToString() ?? "?";
             string bilTur = row.Cells[COL_BILTUR].Value?.ToString() ?? "";
@@ -279,15 +280,26 @@ namespace BaranYardimci
         private void dgv_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
         {
             if (e.RowIndex < 0) return;
+
+            // Önce değişiklik rengi
             if (_degisiklikler.ContainsKey(e.RowIndex))
-            { e.CellStyle.BackColor = Color.FromArgb(70, 60, 10); e.CellStyle.ForeColor = Color.FromArgb(255, 230, 80); }
+            {
+                e.CellStyle.BackColor = Color.FromArgb(70, 60, 10);
+                e.CellStyle.ForeColor = Color.FromArgb(255, 230, 80);
+                e.CellStyle.SelectionBackColor = Color.FromArgb(70, 60, 10);
+                e.CellStyle.SelectionForeColor = Color.FromArgb(255, 230, 80);
+            }
+
+            // Sonra seçim rengi — sadece _secilenSatir mavi
             if (e.RowIndex == _secilenSatir && dgv.Rows[e.RowIndex].Tag?.ToString() == "madde")
-            { e.CellStyle.BackColor = Color.FromArgb(0, 60, 120); e.CellStyle.ForeColor = Color.White; }
+            {
+                e.CellStyle.BackColor = Color.FromArgb(0, 80, 160);
+                e.CellStyle.ForeColor = Color.White;
+                e.CellStyle.SelectionBackColor = Color.FromArgb(0, 80, 160);
+                e.CellStyle.SelectionForeColor = Color.White;
+            }
         }
 
-        // ══════════════════════════════════════════════════════════════════
-        //  ARAMA
-        // ══════════════════════════════════════════════════════════════════
         private void txtArama_TextChanged(object sender, EventArgs e) => AramaYap(txtArama.Text);
 
         private void AramaYap(string q)
@@ -318,10 +330,6 @@ namespace BaranYardimci
         }
 
         private void lvHammadde_DoubleClick(object sender, EventArgs e) => UygulaSecim();
-
-        // ══════════════════════════════════════════════════════════════════
-        //  UYGULA
-        // ══════════════════════════════════════════════════════════════════
         private void btnUygula_Click(object sender, EventArgs e) => UygulaSecim();
 
         private void UygulaSecim()
@@ -334,7 +342,7 @@ namespace BaranYardimci
             if (!_degisiklikler.ContainsKey(_secilenSatir)) _degisiklikler[_secilenSatir] = eskiNo;
             row.Cells[COL_BILNO].Value = _secilenHmNo;
             _tablo.Rows[_secilenSatir][COL_BILNO] = _secilenHmNo;
-            dgv.Refresh();
+            dgv.InvalidateRow(_secilenSatir);
             lblDurum.Text = $"{_degisiklikler.Count} değişiklik yapıldı  |  Kaydetmek için 'Kaydet' butonuna basın";
             lblDurum.ForeColor = Color.FromArgb(255, 200, 80);
 
@@ -351,9 +359,6 @@ namespace BaranYardimci
             }
         }
 
-        // ══════════════════════════════════════════════════════════════════
-        //  KAYDET
-        // ══════════════════════════════════════════════════════════════════
         private void btnKaydet_Click(object sender, EventArgs e)
         {
             if (_degisiklikler.Count == 0) { MessageBox.Show("Herhangi bir değişiklik yapılmadı.", "Bilgi", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
@@ -397,9 +402,6 @@ namespace BaranYardimci
             }
         }
 
-        // ══════════════════════════════════════════════════════════════════
-        //  LOG
-        // ══════════════════════════════════════════════════════════════════
         private void btnLogGoster_Click(object sender, EventArgs e)
         {
             string logYol = LogHelper.LogYoluGetir(_excelYolu);
