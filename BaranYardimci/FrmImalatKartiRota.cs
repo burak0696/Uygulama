@@ -20,30 +20,21 @@ namespace BaranYardimci
 {
     public partial class FrmImalatKartiRota : Form
     {
-        // ── Rota ─────────────────────────────────────────────────────────
-        // K=0 D=1 M=2 O=3 S=4 B=5 W=6 G=7
         private static readonly string[] ROTA_KOD = { "K", "D", "M", "O", "S", "B", "W", "G" };
         private static readonly string[] ROTA_ISIM = { "KESME", "DELME", "MARKALAMA", "OYMA", "SIRT ALMA", "BÜKME", "KAYNAK", "GALVANİZ" };
         private static readonly string[] ROTA_BILESEN = { "kesme", "delme", "markalama", "oyma", "sirt alma", "bükme", "kaynak", "galvaniz" };
-
-        // Varsayılan açık rotalar: K(0) M(2) G(7) — Kesme, Markalama, Galvaniz
         private static readonly int[] VARSAYILAN_ROTA = { 0, 2, 7 };
 
-        // ── WNet ─────────────────────────────────────────────────────────
         [DllImport("mpr.dll")]
         private static extern int WNetAddConnection2(ref NETRESOURCE nr, string password, string username, int flags);
         [StructLayout(LayoutKind.Sequential)]
-        private struct NETRESOURCE
-        {
-            public int dwScope, dwType, dwDisplayType, dwUsage;
-            public string lpLocalName, lpRemoteName, lpComment, lpProvider;
-        }
+        private struct NETRESOURCE { public int dwScope, dwType, dwDisplayType, dwUsage; public string lpLocalName, lpRemoteName, lpComment, lpProvider; }
+
         const string NET_PATH = @"\\192.168.2.10\erp\Hazir_Exceller";
         const string NET_USER = "admin";
         const string NET_PASS = "asd123asd";
         const string FAV_FILE = "erp_favoriler.txt";
 
-        // ── Sütun indeksleri (1 tabanlı) ─────────────────────────────────
         const int COL_PROJENO = 1;
         const int COL_POZNO = 2;
         const int COL_POZACIKLAMA = 3;
@@ -55,7 +46,6 @@ namespace BaranYardimci
         const int COL_BILMIKTAR = 9;
         const int COL_ISLEMSIRA = 10;
 
-        // ── Model ─────────────────────────────────────────────────────────
         private class PozBilgi
         {
             public string PozNo, PozNoOrijinal, DwgYolu, PdfYolu, GoruntuYolu;
@@ -64,7 +54,6 @@ namespace BaranYardimci
             public object ProjeNo, AnaPozNo, PozMiktar, PozAgirlik;
         }
 
-        // ── ACadSharp ─────────────────────────────────────────────────────
         private class CadTransform
         {
             public double X, Y, ScaleX = 1, ScaleY = 1, Rotation;
@@ -80,6 +69,7 @@ namespace BaranYardimci
                 return new CadTransform { X = pos.X, Y = pos.Y, ScaleX = p.ScaleX * c.ScaleX, ScaleY = p.ScaleY * c.ScaleY, Rotation = p.Rotation + c.Rotation };
             }
         }
+
         private class RenderItem
         {
             public string Type, Text;
@@ -88,14 +78,12 @@ namespace BaranYardimci
             public List<PointF> Points;
         }
 
-        // ── State ─────────────────────────────────────────────────────────
         private readonly string _erpExcelYolu;
         private string _imalatKlasor = "";
         private List<PozBilgi> _pozList = new List<PozBilgi>();
         private List<PozBilgi> _filtreliPozlar = new List<PozBilgi>();
         private List<string> _favoriler = new List<string>();
         private Dictionary<string, bool[]> _rotaDurumlar = new Dictionary<string, bool[]>(StringComparer.OrdinalIgnoreCase);
-        // Varsayılan uygulanmış pozları takip et — kullanıcı sıfırlasa bile tekrar uygulamayalım
         private HashSet<string> _varsayilanUygulandi = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private int _mevcutIndex = -1;
         private Button[] _rotaButonlar = new Button[8];
@@ -105,16 +93,12 @@ namespace BaranYardimci
         private ListBox _lbFavoriler;
         private TextBox _txtArama;
 
-        // ════════════════════════════════════════════════════════════════
-        //  CONSTRUCTOR
-        // ════════════════════════════════════════════════════════════════
+        // ── CONSTRUCTOR ───────────────────────────────────────────────────
 
         public FrmImalatKartiRota(string erpExcelYolu)
         {
             InitializeComponent();
             _erpExcelYolu = erpExcelYolu;
-
-            // Klavye kısayolları için form KeyPreview
             this.KeyPreview = true;
             this.KeyDown += FrmImalatKartiRota_KeyDown;
         }
@@ -128,10 +112,13 @@ namespace BaranYardimci
             EkleFavoriPaneli();
             EkleAramaKutusu();
 
+            // lbPozlar owner draw — seçim mavisi kaldır
+            lbPozlar.DrawMode = DrawMode.OwnerDrawFixed;
+            lbPozlar.DrawItem += lbPozlar_DrawItem;
+
             if (string.IsNullOrEmpty(_erpExcelYolu) || !File.Exists(_erpExcelYolu))
             {
-                MessageBox.Show("ERP Excel dosyası bulunamadı:\n" + _erpExcelYolu,
-                    "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("ERP Excel dosyası bulunamadı:\n" + _erpExcelYolu, "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 DialogResult = DialogResult.Cancel;
                 Close(); return;
             }
@@ -140,8 +127,7 @@ namespace BaranYardimci
             OlusturRotaButonlar();
             ExceldenPozOku();
 
-            if (_pozList.Count == 0)
-            { MessageBox.Show("Excel'de poz bulunamadı.", "Bilgi", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
+            if (_pozList.Count == 0) { MessageBox.Show("Excel'de poz bulunamadı.", "Bilgi", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
 
             txtKlasorYol.Focus();
         }
@@ -153,18 +139,11 @@ namespace BaranYardimci
                 try { if (File.Exists(f)) File.Delete(f); } catch { }
         }
 
-        // ════════════════════════════════════════════════════════════════
-        //  KLAVYE KISAYOLLARI
-        //  K D M O S B W G  →  rota toggle
-        //  Enter             →  sonraki poz
-        // ════════════════════════════════════════════════════════════════
+        // ── KLAVYE ────────────────────────────────────────────────────────
 
         private void FrmImalatKartiRota_KeyDown(object sender, KeyEventArgs e)
         {
-            // txtKlasorYol veya txtArama odaktaysa klavye kısayollarını yok say
-            if (ActiveControl == txtKlasorYol || ActiveControl == _txtArama)
-                return;
-
+            if (ActiveControl == txtKlasorYol || ActiveControl == _txtArama) return;
             switch (e.KeyCode)
             {
                 case Keys.K: RotaToggle(0); e.SuppressKeyPress = true; break;
@@ -175,39 +154,28 @@ namespace BaranYardimci
                 case Keys.B: RotaToggle(5); e.SuppressKeyPress = true; break;
                 case Keys.W: RotaToggle(6); e.SuppressKeyPress = true; break;
                 case Keys.G: RotaToggle(7); e.SuppressKeyPress = true; break;
-                case Keys.Enter:
-                    e.SuppressKeyPress = true;
-                    if (_mevcutIndex < _pozList.Count - 1) GosterPoz(_mevcutIndex + 1);
-                    break;
-                case Keys.Left:
-                case Keys.Up:
-                    if (!e.Alt) { if (_mevcutIndex > 0) GosterPoz(_mevcutIndex - 1); e.SuppressKeyPress = true; }
-                    break;
-                case Keys.Right:
-                case Keys.Down:
-                    if (!e.Alt) { if (_mevcutIndex < _pozList.Count - 1) GosterPoz(_mevcutIndex + 1); e.SuppressKeyPress = true; }
-                    break;
+                case Keys.Enter: e.SuppressKeyPress = true; if (_mevcutIndex < _pozList.Count - 1) GosterPoz(_mevcutIndex + 1); break;
+                case Keys.Left: case Keys.Up: if (!e.Alt) { if (_mevcutIndex > 0) GosterPoz(_mevcutIndex - 1); e.SuppressKeyPress = true; } break;
+                case Keys.Right: case Keys.Down: if (!e.Alt) { if (_mevcutIndex < _pozList.Count - 1) GosterPoz(_mevcutIndex + 1); e.SuppressKeyPress = true; } break;
             }
         }
 
-        // ════════════════════════════════════════════════════════════════
-        //  FAVORİ PANELİ
-        // ════════════════════════════════════════════════════════════════
+        // ── FAVORİ PANELİ ─────────────────────────────────────────────────
 
         private void EkleFavoriPaneli()
         {
             _pnlFavoriler = new Panel { Width = 260, Dock = DockStyle.Right, BackColor = Color.FromArgb(18, 18, 26) };
-            var lblBaslik = new Label { Text = "⭐  SIKÇA KULLANILANLAR", Font = new Font("Segoe UI", 9f, FontStyle.Bold), ForeColor = Color.FromArgb(255, 210, 80), Dock = DockStyle.Top, Height = 30, TextAlign = ContentAlignment.MiddleCenter, BackColor = Color.FromArgb(28, 28, 42) };
-            var lblAcikla = new Label { Text = "2× tıkla → Yeni pencerede aç", Font = new Font("Segoe UI", 8f, FontStyle.Italic), ForeColor = Color.FromArgb(110, 120, 140), Dock = DockStyle.Bottom, Height = 20, TextAlign = ContentAlignment.MiddleCenter, BackColor = Color.FromArgb(18, 18, 26) };
+            var lblBaslik = new Label { Text = "⭐  SIKÇA KULLANILANLAR", Font = new Font("Segoe UI", 9f, FontStyle.Bold), ForeColor = Color.FromArgb(255, 210, 80), Dock = DockStyle.Top, Height = 32, TextAlign = ContentAlignment.MiddleCenter };
+            var lblAcikla = new Label { Text = "2× tıkla → Yeni pencerede aç", Font = new Font("Segoe UI", 8f, FontStyle.Italic), ForeColor = Color.FromArgb(110, 120, 140), Dock = DockStyle.Top, Height = 22, TextAlign = ContentAlignment.MiddleCenter };
             var pnlButonlar = new TableLayoutPanel { Dock = DockStyle.Bottom, Height = 42, ColumnCount = 2, RowCount = 1, BackColor = Color.FromArgb(18, 18, 26) };
             pnlButonlar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
             pnlButonlar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-            var btnEkle = new Button { Text = "➕ Ekle", Dock = DockStyle.Fill, Font = new Font("Segoe UI", 9.5f, FontStyle.Bold), FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(34, 100, 55), ForeColor = Color.White, Cursor = Cursors.Hand, Margin = new Padding(2) };
+            var btnEkle = new Button { Text = "➕ Ekle", Dock = DockStyle.Fill, Font = new Font("Segoe UI", 9.5f, FontStyle.Bold), FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(34, 100, 34), ForeColor = Color.White, Cursor = Cursors.Hand };
             btnEkle.FlatAppearance.BorderSize = 0; btnEkle.Click += BtnFavEkle_Click;
-            var btnSil = new Button { Text = "🗑 Sil", Dock = DockStyle.Fill, Font = new Font("Segoe UI", 9.5f), FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(100, 28, 28), ForeColor = Color.White, Cursor = Cursors.Hand, Margin = new Padding(2) };
+            var btnSil = new Button { Text = "🗑 Sil", Dock = DockStyle.Fill, Font = new Font("Segoe UI", 9.5f), FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(100, 28, 28), ForeColor = Color.White, Cursor = Cursors.Hand };
             btnSil.FlatAppearance.BorderSize = 0; btnSil.Click += BtnFavSil_Click;
             pnlButonlar.Controls.Add(btnEkle, 0, 0); pnlButonlar.Controls.Add(btnSil, 1, 0);
-            _lbFavoriler = new ListBox { Dock = DockStyle.Fill, BackColor = Color.FromArgb(24, 24, 36), ForeColor = Color.FromArgb(200, 215, 240), Font = new Font("Segoe UI", 10f), BorderStyle = BorderStyle.None, IntegralHeight = false };
+            _lbFavoriler = new ListBox { Dock = DockStyle.Fill, BackColor = Color.FromArgb(24, 24, 36), ForeColor = Color.FromArgb(200, 215, 240), Font = new Font("Segoe UI", 10f), BorderStyle = BorderStyle.None };
             _lbFavoriler.DoubleClick += LbFavoriler_DoubleClick;
             _pnlFavoriler.Controls.Add(_lbFavoriler);
             _pnlFavoriler.Controls.Add(pnlButonlar);
@@ -218,13 +186,11 @@ namespace BaranYardimci
             FavorileriListeyeYaz();
         }
 
-        // ════════════════════════════════════════════════════════════════
-        //  ARAMA KUTUSU
-        // ════════════════════════════════════════════════════════════════
+        // ── ARAMA KUTUSU ──────────────────────────────────────────────────
 
         private void EkleAramaKutusu()
         {
-            _txtArama = new TextBox { Dock = DockStyle.Bottom, Height = 42, Font = new Font("Segoe UI", 13f), BackColor = Color.FromArgb(30, 32, 48), ForeColor = Color.FromArgb(100, 110, 130), BorderStyle = BorderStyle.FixedSingle, Text = "🔍 Poz ara..." };
+            _txtArama = new TextBox { Dock = DockStyle.Bottom, Height = 42, Font = new Font("Segoe UI", 13f), BackColor = Color.FromArgb(30, 32, 48), ForeColor = Color.FromArgb(100, 110, 130), BorderStyle = BorderStyle.None, Text = "🔍 Poz ara..." };
             _txtArama.GotFocus += (s, ev) => { if (_txtArama.Text == "🔍 Poz ara...") { _txtArama.Text = ""; _txtArama.ForeColor = Color.FromArgb(200, 215, 245); } };
             _txtArama.LostFocus += (s, ev) => { if (string.IsNullOrEmpty(_txtArama.Text)) { _txtArama.Text = "🔍 Poz ara..."; _txtArama.ForeColor = Color.FromArgb(100, 110, 130); } };
             _txtArama.TextChanged += TxtArama_TextChanged;
@@ -241,9 +207,7 @@ namespace BaranYardimci
             ListeyiGuncelle();
         }
 
-        // ════════════════════════════════════════════════════════════════
-        //  FAVORİLER
-        // ════════════════════════════════════════════════════════════════
+        // ── FAVORİLER ─────────────────────────────────────────────────────
 
         private void FavorileriYukle()
         {
@@ -252,17 +216,12 @@ namespace BaranYardimci
             try
             {
                 foreach (var s in File.ReadAllLines(FAV_FILE, Encoding.UTF8).Where(x => !string.IsNullOrWhiteSpace(x)))
-                {
-                    string yol = s.Trim();
-                    if (File.Exists(yol) && !_favoriler.Contains(yol, StringComparer.OrdinalIgnoreCase))
-                        _favoriler.Add(yol);
-                }
+                { string yol = s.Trim(); if (File.Exists(yol) && !_favoriler.Contains(yol, StringComparer.OrdinalIgnoreCase)) _favoriler.Add(yol); }
             }
             catch { }
         }
 
-        private void FavorileriKaydet()
-        { try { File.WriteAllLines(FAV_FILE, _favoriler, Encoding.UTF8); } catch { } }
+        private void FavorileriKaydet() { try { File.WriteAllLines(FAV_FILE, _favoriler, Encoding.UTF8); } catch { } }
 
         private void FavorileriListeyeYaz()
         {
@@ -298,9 +257,7 @@ namespace BaranYardimci
             frm.Show();
         }
 
-        // ════════════════════════════════════════════════════════════════
-        //  KLASÖR SEÇİMİ
-        // ════════════════════════════════════════════════════════════════
+        // ── KLASÖR SEÇİMİ ─────────────────────────────────────────────────
 
         private void btnKlasorSec_Click(object sender, EventArgs e)
         { txtKlasorYol.Focus(); txtKlasorYol.SelectAll(); }
@@ -327,9 +284,7 @@ namespace BaranYardimci
         }
 
         private void txtKlasorYol_KeyDown(object sender, KeyEventArgs e)
-        {
-            if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; btnKlasorGit_Click(sender, EventArgs.Empty); }
-        }
+        { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; btnKlasorGit_Click(sender, EventArgs.Empty); } }
 
         private void KlasorUygula(string yol)
         {
@@ -341,9 +296,7 @@ namespace BaranYardimci
             if (_pozList.Count > 0) GosterPoz(_mevcutIndex >= 0 ? _mevcutIndex : 0);
         }
 
-        // ════════════════════════════════════════════════════════════════
-        //  ROTA BUTONLARI
-        // ════════════════════════════════════════════════════════════════
+        // ── ROTA BUTONLARI ────────────────────────────────────────────────
 
         private void OlusturRotaButonlar()
         {
@@ -369,28 +322,14 @@ namespace BaranYardimci
             }
         }
 
-        private void ButonYesil(Button b)
-        {
-            b.BackColor = Color.FromArgb(39, 174, 96);
-            b.ForeColor = Color.White;
-            b.FlatAppearance.BorderColor = Color.FromArgb(30, 130, 76);
-            b.FlatAppearance.BorderSize = 2;
-        }
-
-        private void ButonKirmizi(Button b)
-        {
-            b.BackColor = Color.FromArgb(192, 57, 43);
-            b.ForeColor = Color.White;
-            b.FlatAppearance.BorderColor = Color.FromArgb(150, 40, 30);
-            b.FlatAppearance.BorderSize = 2;
-        }
+        private void ButonYesil(Button b) { b.BackColor = Color.FromArgb(39, 174, 96); b.ForeColor = Color.White; b.FlatAppearance.BorderColor = Color.FromArgb(30, 130, 76); b.FlatAppearance.BorderSize = 2; }
+        private void ButonKirmizi(Button b) { b.BackColor = Color.FromArgb(192, 57, 43); b.ForeColor = Color.White; b.FlatAppearance.BorderColor = Color.FromArgb(150, 40, 30); b.FlatAppearance.BorderSize = 2; }
 
         private void RotaToggle(int idx)
         {
             if (_mevcutIndex < 0 || _mevcutIndex >= _pozList.Count) return;
             string poz = _pozList[_mevcutIndex].PozNo;
             if (!_rotaDurumlar.ContainsKey(poz)) _rotaDurumlar[poz] = new bool[8];
-            // Varsayılan uygulandı olarak işaretle (kullanıcı aktif toggle yaptı)
             _varsayilanUygulandi.Add(poz);
             _rotaDurumlar[poz][idx] = !_rotaDurumlar[poz][idx];
             if (_rotaDurumlar[poz][idx]) ButonYesil(_rotaButonlar[idx]);
@@ -421,7 +360,7 @@ namespace BaranYardimci
         {
             pnlRotaOzeti.Controls.Clear();
             bool[] dur = _rotaDurumlar.ContainsKey(pozNo) ? _rotaDurumlar[pozNo] : new bool[8];
-            var baslik = new Label { Text = "SEÇİLEN\r\nROTALAR", Font = new Font("Segoe UI", 8f, FontStyle.Bold), ForeColor = Color.FromArgb(160, 160, 180), Dock = DockStyle.Top, Height = 34, TextAlign = ContentAlignment.MiddleCenter, BackColor = Color.FromArgb(30, 30, 38) };
+            var baslik = new Label { Text = "SEÇİLEN\r\nROTALAR", Font = new Font("Segoe UI", 8f, FontStyle.Bold), ForeColor = Color.FromArgb(160, 160, 180), Dock = DockStyle.Top, Height = 34, TextAlign = ContentAlignment.MiddleCenter };
             pnlRotaOzeti.Controls.Add(baslik);
             for (int i = 7; i >= 0; i--)
             {
@@ -444,40 +383,18 @@ namespace BaranYardimci
             baslik.BringToFront();
         }
 
-        // ════════════════════════════════════════════════════════════════
-        //  VARSAYILAN ROTA UYGULA
-        //  Galvaniz (G=7), Kesme (K=0), Markalama (M=2) hep açık gelir
-        //  Excel'den okunan mevcut rota varsa ona dokunma
-        // ════════════════════════════════════════════════════════════════
+        // ── VARSAYILAN ROTA ───────────────────────────────────────────────
 
         private void VarsayilanRotaUygula(string pozNo)
         {
             if (_varsayilanUygulandi.Contains(pozNo)) return;
             _varsayilanUygulandi.Add(pozNo);
-
-            if (!_rotaDurumlar.ContainsKey(pozNo))
-                _rotaDurumlar[pozNo] = new bool[8];
-
-            // Sadece hiç rota seçilmemiş pozlara varsayılan uygula
-            // Excel'den okunan rotası varsa varsayılan ekleme, mevcut kalsın
-            bool hicRota = !_rotaDurumlar[pozNo].Any(x => x);
-            if (hicRota)
-            {
-                foreach (int idx in VARSAYILAN_ROTA)
-                    _rotaDurumlar[pozNo][idx] = true;
-            }
-            else
-            {
-                // Zaten rotası var (Excel'den okunmuş), varsayılanları zorla ekleme
-                // ama K,M,G henüz yoksa ekle
-                foreach (int idx in VARSAYILAN_ROTA)
-                    _rotaDurumlar[pozNo][idx] = true;
-            }
+            if (!_rotaDurumlar.ContainsKey(pozNo)) _rotaDurumlar[pozNo] = new bool[8];
+            foreach (int idx in VARSAYILAN_ROTA)
+                _rotaDurumlar[pozNo][idx] = true;
         }
 
-        // ════════════════════════════════════════════════════════════════
-        //  DWG / DXF → PNG
-        // ════════════════════════════════════════════════════════════════
+        // ── DWG / DXF → PNG ───────────────────────────────────────────────
 
         private string DwgdenPngYap(string kaynak)
         {
@@ -533,8 +450,7 @@ namespace BaranYardimci
 
         private void RenderToPng(List<RenderItem> items, string cikisYolu)
         {
-            float minX = float.MaxValue, minY = float.MaxValue;
-            float maxX = float.MinValue, maxY = float.MinValue;
+            float minX = float.MaxValue, minY = float.MaxValue, maxX = float.MinValue, maxY = float.MinValue;
             void Check(PointF p) { if (p.X < minX) minX = p.X; if (p.X > maxX) maxX = p.X; if (p.Y < minY) minY = p.Y; if (p.Y > maxY) maxY = p.Y; }
             foreach (var item in items)
             {
@@ -568,7 +484,7 @@ namespace BaranYardimci
                             case "Line": g.DrawLine(pen, ToScreen(item.P1), ToScreen(item.P2)); break;
                             case "Circle": { var c = ToScreen(item.P1); float r = item.Radius * sc; g.DrawEllipse(pen, c.X - r, c.Y - r, r * 2, r * 2); break; }
                             case "Polyline": if (item.Points != null && item.Points.Count > 1) for (int i = 0; i < item.Points.Count - 1; i++) g.DrawLine(pen, ToScreen(item.Points[i]), ToScreen(item.Points[i + 1])); break;
-                            case "Arc": { var c = ToScreen(item.P1); float r = item.Radius * sc; float s2 = (float)(item.StartAngle * 180 / Math.PI); float en = (float)(item.EndAngle * 180 / Math.PI); float sw = en - s2; if (sw < 0) sw += 360; try { g.DrawArc(pen, c.X - r, c.Y - r, r * 2, r * 2, -s2, -sw); } catch { } break; }
+                            case "Arc": { var c = ToScreen(item.P1); float r = item.Radius * sc; float s2 = (float)(item.StartAngle * 180 / Math.PI); float en = (float)(item.EndAngle * 180 / Math.PI); float sweep = en - s2; if (sweep < 0) sweep += 360; g.DrawArc(pen, c.X - r, c.Y - r, r * 2, r * 2, -s2, -sweep); break; }
                             case "Text": { float fs = Math.Max(8f, Math.Min(item.Size * sc, 180f)); var pos = ToScreen(item.P1); pos.Y -= fs; g.DrawString(item.Text, new Font("Arial", fs), br, pos); break; }
                         }
                     }
@@ -577,27 +493,22 @@ namespace BaranYardimci
             }
         }
 
-        // ════════════════════════════════════════════════════════════════
-        //  EXCEL OKU
-        // ════════════════════════════════════════════════════════════════
+        // ── EXCEL OKU ─────────────────────────────────────────────────────
 
         private void ExceldenPozOku()
         {
             _pozList.Clear();
             lbPozlar.Items.Clear();
+            var islenen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             Excel.Application app = null; Excel.Workbook wb = null;
             try
             {
                 app = new Excel.Application(); app.Visible = false; app.DisplayAlerts = false;
-                wb = app.Workbooks.Open(_erpExcelYolu, false, true,
-                    Type.Missing, Type.Missing, Type.Missing, Type.Missing, Type.Missing,
-                    Type.Missing, Type.Missing, Type.Missing, Type.Missing, Type.Missing,
-                    Type.Missing, Type.Missing);
+                wb = app.Workbooks.Open(_erpExcelYolu, false, true, Type.Missing, Type.Missing, Type.Missing, Type.Missing, Type.Missing, Type.Missing, Type.Missing, Type.Missing, Type.Missing, Type.Missing, Type.Missing, Type.Missing);
                 var ws = (Excel.Worksheet)wb.Worksheets[1];
                 int last = ws.UsedRange.Rows.Count;
 
-                // Bileşen Miktar topla — sadece "Madde" satırlarından
                 var pozAdetler = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
                 for (int r = 2; r <= last; r++)
                 {
@@ -612,10 +523,8 @@ namespace BaranYardimci
                     if (pozAdetler.ContainsKey(p)) pozAdetler[p] += a; else pozAdetler[p] = a;
                 }
 
-                var islenen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 for (int r = 2; r <= last; r++)
                 {
-                    // Kaynak (rota) satırlarından mevcut rotayı oku
                     object bilTurV = ((Excel.Range)ws.Cells[r, COL_BILTUR]).Value2;
                     if (bilTurV != null && bilTurV.ToString().Trim().ToLower() == "kaynak")
                     {
@@ -629,7 +538,7 @@ namespace BaranYardimci
                         if (rotaIdx < 0) continue;
                         if (!_rotaDurumlar.ContainsKey(temiz2)) _rotaDurumlar[temiz2] = new bool[8];
                         _rotaDurumlar[temiz2][rotaIdx] = true;
-                        _varsayilanUygulandi.Add(temiz2); // Excel'den okunan, varsayılan ekleme
+                        _varsayilanUygulandi.Add(temiz2);
                         continue;
                     }
 
@@ -639,7 +548,7 @@ namespace BaranYardimci
                     if (string.IsNullOrEmpty(orijinal)) continue;
                     string temiz = orijinal.Replace("/", "").Replace("\\", "").Trim();
                     if (islenen.Contains(temiz)) continue;
-                    islened.Add(temiz);
+                    islenen.Add(temiz);
 
                     _pozList.Add(new PozBilgi
                     {
@@ -654,7 +563,6 @@ namespace BaranYardimci
                     });
                 }
 
-                // Excel'den rotası gelmemiş pozlara varsayılan K,M,G uygula
                 foreach (var poz in _pozList)
                     if (!_varsayilanUygulandi.Contains(poz.PozNo))
                         VarsayilanRotaUygula(poz.PozNo);
@@ -672,13 +580,7 @@ namespace BaranYardimci
             ListeyiGuncelle();
         }
 
-        // islened → islenen (typo düzeltmesi için alias)
-        private HashSet<string> islened => _islened;
-        private HashSet<string> _islened = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        // ════════════════════════════════════════════════════════════════
-        //  DOSYA EŞLEŞTİRME
-        // ════════════════════════════════════════════════════════════════
+        // ── DOSYA EŞLEŞTİRME ─────────────────────────────────────────────
 
         private void DosyalariEsle()
         {
@@ -704,9 +606,7 @@ namespace BaranYardimci
         private static string Temizle(string s) =>
             s.Replace("/", "").Replace("\\", "").Replace("-", "").Replace("_", "").Replace(" ", "").ToUpper();
 
-        // ════════════════════════════════════════════════════════════════
-        //  POZ GÖSTER
-        // ════════════════════════════════════════════════════════════════
+        // ── POZ GÖSTER ────────────────────────────────────────────────────
 
         private void GosterPoz(int index)
         {
@@ -714,7 +614,6 @@ namespace BaranYardimci
             _mevcutIndex = index;
             var poz = _pozList[index];
 
-            // Varsayılan rota — poz henüz gösterilmemişse uygula
             VarsayilanRotaUygula(poz.PozNo);
 
             for (int i = 0; i < _filtreliPozlar.Count; i++)
@@ -725,13 +624,12 @@ namespace BaranYardimci
             lblAdet.Text = poz.UretilecekAdet > 0 ? $"ÜRETİLECEK: {poz.UretilecekAdet:0.##} ADET" : "Adet bilgisi yok";
 
             bool[] dur = _rotaDurumlar.ContainsKey(poz.PozNo) ? _rotaDurumlar[poz.PozNo] : new bool[8];
-            for (int i = 0; i < 8; i++)
-            { if (dur[i]) ButonYesil(_rotaButonlar[i]); else ButonKirmizi(_rotaButonlar[i]); }
+            for (int i = 0; i < 8; i++) { if (dur[i]) ButonYesil(_rotaButonlar[i]); else ButonKirmizi(_rotaButonlar[i]); }
             GuncelleRotaLabel(poz.PozNo);
             GuncelleRotaOzeti(poz.PozNo);
 
             if (poz.PdfYolu != null && File.Exists(poz.PdfYolu))
-            { lblDosyaBilgi.Text = "📄 PDF  →  " + Path.GetFileName(poz.PdfYolu); lblDosyaBilgi.ForeColor = Color.FromArgb(160, 220, 160); try { webBrowser.Navigate(new Uri(poz.PdfYolu)); } catch { GosterHtml(poz, "PDF yüklenemedi."); } }
+            { lblDosyaBilgi.Text = "📄 PDF  →  " + Path.GetFileName(poz.PdfYolu); lblDosyaBilgi.ForeColor = Color.FromArgb(160, 220, 160); try { webBrowser.Navigate(new Uri(poz.PdfYolu)); } catch { } }
             else if (poz.GoruntuYolu != null && File.Exists(poz.GoruntuYolu))
                 GosterGoruntu(poz, poz.GoruntuYolu);
             else if (poz.DwgYolu != null)
@@ -754,14 +652,14 @@ namespace BaranYardimci
             lblDosyaBilgi.Text = $"🔧 {uzanti} → PNG  |  {Path.GetFileName(pngYolu)}"; lblDosyaBilgi.ForeColor = Color.FromArgb(160, 200, 255);
             string base64;
             try { base64 = Convert.ToBase64String(File.ReadAllBytes(pngYolu)); } catch { GosterHtml(poz, "Görüntü yüklenemedi."); return; }
-            webBrowser.DocumentText = $@"<!DOCTYPE html><html><head><style>*{{margin:0;padding:0;box-sizing:border-box;}}body{{background:#1a1a20;display:flex;align-items:center;justify-content:center;width:100%;height:100vh;overflow:hidden;}}img{{max-width:100%;max-height:100vh;object-fit:contain;box-shadow:0 0 40px #000;border:1px solid #333;}}</style></head><body><img src='data:image/png;base64,{base64}' alt='POZ: {poz.PozNo}'/></body></html>";
+            webBrowser.DocumentText = $@"<!DOCTYPE html><html><head><style>*{{margin:0;padding:0;box-sizing:border-box;}}body{{background:#1a1a20;display:flex;align-items:center;justify-content:center;height:100vh;}}img{{max-width:100%;max-height:100vh;object-fit:contain;}}</style></head><body><img src='data:image/png;base64,{base64}'/></body></html>";
         }
 
         private void GosterHtml(PozBilgi poz, string mesaj)
         {
             string dosyaBilgi = poz.DwgYolu != null ? $"<code style='color:#7fb3d3'>{poz.DwgYolu}</code>" : "<span style='color:#e74c3c'>Klasörde eşleşen dosya bulunamadı</span>";
             lblDosyaBilgi.Text = "⚠  " + mesaj.Replace("<br>", " "); lblDosyaBilgi.ForeColor = Color.FromArgb(220, 150, 60);
-            webBrowser.DocumentText = $@"<!DOCTYPE html><html><body style='font-family:Segoe UI;background:#1a1a20;color:#ccc;padding:60px;'><h2 style='color:#e67e22;margin-bottom:10px'>⚠  POZ: {poz.PozNo}</h2><p style='font-size:15px;margin-bottom:16px'>{mesaj}</p><p style='font-size:13px'>{dosyaBilgi}</p></body></html>";
+            webBrowser.DocumentText = $@"<!DOCTYPE html><html><body style='font-family:Segoe UI;background:#1a1a20;color:#ccc;padding:60px;'><h2 style='color:#e67e22;margin-bottom:10px'>⚠  POZ: {poz.PozNo}</h2><p style='margin-bottom:8px'>{mesaj}</p><p>{dosyaBilgi}</p></body></html>";
         }
 
         private void ListeyiGuncelle()
@@ -782,9 +680,41 @@ namespace BaranYardimci
             if (sel >= 0 && sel < lbPozlar.Items.Count) lbPozlar.SelectedIndex = sel;
         }
 
-        // ════════════════════════════════════════════════════════════════
-        //  YAZDIR — kartuş dostu, açık renkler
-        // ════════════════════════════════════════════════════════════════
+        // ── OWNER DRAW — poz listesi rota rengine göre ────────────────────
+
+        private void lbPozlar_DrawItem(object sender, DrawItemEventArgs e)
+        {
+            if (e.Index < 0 || e.Index >= _filtreliPozlar.Count) return;
+            var poz = _filtreliPozlar[e.Index];
+            bool[] rota = _rotaDurumlar.ContainsKey(poz.PozNo) ? _rotaDurumlar[poz.PozNo] : new bool[8];
+            int rotaSayisi = rota.Count(x => x);
+            bool selected = (e.State & DrawItemState.Selected) != 0;
+
+            Color bg, fg;
+            if (rotaSayisi == 0)
+            { bg = Color.FromArgb(55, 28, 28); fg = Color.FromArgb(220, 140, 140); }
+            else if (rota[0] && rota[2] && rota[7])
+            { bg = Color.FromArgb(22, 50, 28); fg = Color.FromArgb(120, 220, 130); }
+            else
+            { bg = Color.FromArgb(52, 46, 18); fg = Color.FromArgb(230, 205, 110); }
+
+            using (var bgBrush = new SolidBrush(bg))
+                e.Graphics.FillRectangle(bgBrush, e.Bounds);
+
+            if (selected)
+            {
+                using (var selBrush = new SolidBrush(Color.White))
+                    e.Graphics.FillRectangle(selBrush, e.Bounds.X, e.Bounds.Y, 4, e.Bounds.Height);
+                fg = Color.White;
+            }
+
+            string text = lbPozlar.Items[e.Index]?.ToString() ?? "";
+            using (var fgBrush = new SolidBrush(fg))
+                e.Graphics.DrawString(text, e.Font ?? lbPozlar.Font, fgBrush,
+                    new RectangleF(e.Bounds.X + 8, e.Bounds.Y + 2, e.Bounds.Width - 12, e.Bounds.Height - 2));
+        }
+
+        // ── YAZDIR ────────────────────────────────────────────────────────
 
         private void btnYazdir_Click(object sender, EventArgs e)
         {
@@ -828,56 +758,44 @@ namespace BaranYardimci
                         var sayfa = ev.PageBounds;
                         g.Clear(Color.White);
 
-                        // ── BAŞLIK BANDI — ince çerçeve, açık gri arka plan ──
                         var headerRect = new Rectangle(sayfa.X, sayfa.Y, sayfa.Width, 52);
-                        using (var headerBr = new SolidBrush(Color.FromArgb(240, 242, 246)))
-                            g.FillRectangle(headerBr, headerRect);
-                        using (var borderPen = new Pen(Color.FromArgb(160, 170, 190), 1.2f))
-                            g.DrawRectangle(borderPen, headerRect);
+                        using (var headerBr = new SolidBrush(Color.FromArgb(240, 242, 246))) g.FillRectangle(headerBr, headerRect);
+                        using (var borderPen = new Pen(Color.FromArgb(160, 170, 190), 1.2f)) g.DrawRectangle(borderPen, headerRect);
 
                         string rotaKod = RotaKoduOlustur(poz.PozNo);
                         string adetStr = poz.UretilecekAdet > 0 ? $"ÜRETİLECEK: {poz.UretilecekAdet:0.##} ADET" : "";
 
-                        // Sol: POZ NO
                         using (var fn = new Font("Segoe UI", 15f, FontStyle.Bold))
                         using (var darkBr = new SolidBrush(Color.FromArgb(30, 40, 60)))
                             g.DrawString($"POZ: {poz.PozNo}", fn, darkBr, new PointF(sayfa.X + 14, sayfa.Y + 10));
 
-                        // Orta: adet
                         if (!string.IsNullOrEmpty(adetStr))
                             using (var fn2 = new Font("Segoe UI", 12f, FontStyle.Bold))
                             using (var adetBr = new SolidBrush(Color.FromArgb(20, 100, 50)))
                                 g.DrawString(adetStr, fn2, adetBr, new PointF(sayfa.X + sayfa.Width / 2f - 120, sayfa.Y + 14));
 
-                        // Sağ: ROTA KODU
                         if (!string.IsNullOrEmpty(rotaKod))
                             using (var fn3 = new Font("Segoe UI", 11f, FontStyle.Bold))
                             using (var rotaBr = new SolidBrush(Color.FromArgb(40, 80, 40)))
                                 g.DrawString($"ROTA: {rotaKod}", fn3, rotaBr, new PointF(sayfa.X + sayfa.Width - 220, sayfa.Y + 16));
 
-                        // Ayraç çizgisi
                         using (var sepPen = new Pen(Color.FromArgb(180, 185, 200), 0.8f))
                             g.DrawLine(sepPen, sayfa.X, sayfa.Y + 52, sayfa.Right, sayfa.Y + 52);
 
-                        // ── GÖRÜNTÜ ALANI ──────────────────────────────────
                         var imgRect = new Rectangle(sayfa.X + 8, sayfa.Y + 58, sayfa.Width - 16, sayfa.Height - 82);
                         string gorYolu = poz.PdfYolu ?? poz.GoruntuYolu;
                         bool goruntu = false;
-                        if (gorYolu != null && File.Exists(gorYolu) &&
-                            !gorYolu.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+                        if (gorYolu != null && File.Exists(gorYolu) && !gorYolu.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
                         {
                             try
                             {
                                 using (var img = Image.FromFile(gorYolu))
                                 {
-                                    float rW = (float)imgRect.Width / img.Width;
-                                    float rH = (float)imgRect.Height / img.Height;
+                                    float rW = (float)imgRect.Width / img.Width, rH = (float)imgRect.Height / img.Height;
                                     float rt = Math.Min(rW, rH);
                                     int iW = (int)(img.Width * rt), iH = (int)(img.Height * rt);
-                                    int iX = imgRect.X + (imgRect.Width - iW) / 2;
-                                    int iY = imgRect.Y + (imgRect.Height - iH) / 2;
-                                    g.DrawImage(img, iX, iY, iW, iH);
-                                    goruntu = true;
+                                    int iX = imgRect.X + (imgRect.Width - iW) / 2, iY = imgRect.Y + (imgRect.Height - iH) / 2;
+                                    g.DrawImage(img, iX, iY, iW, iH); goruntu = true;
                                 }
                             }
                             catch { }
@@ -887,17 +805,13 @@ namespace BaranYardimci
                             using (var grBr = new SolidBrush(Color.FromArgb(160, 160, 170)))
                                 g.DrawString("Görüntü mevcut değil", fn4, grBr, new PointF(imgRect.X + 40, imgRect.Y + 40));
 
-                        // ── ALT BİLGİ SATIRI — rota isimleri, açık gri ──
                         if (!string.IsNullOrEmpty(rotaKod))
                         {
-                            var rotaIsimler = rotaKod.ToCharArray().Select(c =>
-                            { int ii = Array.IndexOf(ROTA_KOD, c.ToString()); return ii >= 0 ? ROTA_ISIM[ii] : c.ToString(); });
+                            var rotaIsimler = rotaKod.ToCharArray().Select(c => { int ii = Array.IndexOf(ROTA_KOD, c.ToString()); return ii >= 0 ? ROTA_ISIM[ii] : c.ToString(); });
                             string rotaTxt = "Rotalar: " + string.Join("  →  ", rotaIsimler);
                             var altRect = new Rectangle(sayfa.X, sayfa.Bottom - 24, sayfa.Width, 24);
-                            using (var altBr = new SolidBrush(Color.FromArgb(248, 249, 251)))
-                                g.FillRectangle(altBr, altRect);
-                            using (var sepPen = new Pen(Color.FromArgb(200, 205, 215), 0.8f))
-                                g.DrawLine(sepPen, sayfa.X, sayfa.Bottom - 24, sayfa.Right, sayfa.Bottom - 24);
+                            using (var altBr = new SolidBrush(Color.FromArgb(248, 249, 251))) g.FillRectangle(altBr, altRect);
+                            using (var sepPen = new Pen(Color.FromArgb(200, 205, 215), 0.8f)) g.DrawLine(sepPen, sayfa.X, sayfa.Bottom - 24, sayfa.Right, sayfa.Bottom - 24);
                             using (var fns = new Font("Segoe UI", 8.5f))
                             using (var dbr = new SolidBrush(Color.FromArgb(70, 80, 100)))
                                 g.DrawString(rotaTxt, fns, dbr, new PointF(sayfa.X + 14, sayfa.Bottom - 20));
@@ -912,9 +826,7 @@ namespace BaranYardimci
             }
         }
 
-        // ════════════════════════════════════════════════════════════════
-        //  OLAYLAR
-        // ════════════════════════════════════════════════════════════════
+        // ── OLAYLAR ───────────────────────────────────────────────────────
 
         private void btnGeri_Click(object sender, EventArgs e)
         { if (_mevcutIndex > 0) GosterPoz(_mevcutIndex - 1); }
@@ -946,7 +858,7 @@ namespace BaranYardimci
             if (_mevcutIndex < 0) return;
             string poz = _pozList[_mevcutIndex].PozNo;
             _rotaDurumlar[poz] = new bool[8];
-            _varsayilanUygulandi.Add(poz); // Temizlendi, tekrar varsayılan ekleme
+            _varsayilanUygulandi.Add(poz);
             for (int i = 0; i < 8; i++) ButonKirmizi(_rotaButonlar[i]);
             GuncelleRotaLabel(poz); GuncelleRotaOzeti(poz); ListeyiGuncelle();
         }
@@ -960,9 +872,7 @@ namespace BaranYardimci
             else MessageBox.Show("Dosya bulunamadı.");
         }
 
-        // ════════════════════════════════════════════════════════════════
-        //  KAYDET & ÇIKIŞ
-        // ════════════════════════════════════════════════════════════════
+        // ── KAYDET & ÇIKIŞ ────────────────────────────────────────────────
 
         private void btnKaydetCikis_Click(object sender, EventArgs e)
         {
@@ -973,15 +883,11 @@ namespace BaranYardimci
                 var nr = new NETRESOURCE { dwType = 1, lpRemoteName = NET_PATH };
                 WNetAddConnection2(ref nr, NET_PASS, NET_USER, 0);
                 app = new Excel.Application(); app.Visible = false; app.DisplayAlerts = false;
-                wb = app.Workbooks.Open(_erpExcelYolu, false, false,
-                    Type.Missing, Type.Missing, Type.Missing, Type.Missing, Type.Missing,
-                    Type.Missing, Type.Missing, Type.Missing, Type.Missing, Type.Missing,
-                    Type.Missing, Type.Missing);
+                wb = app.Workbooks.Open(_erpExcelYolu, false, false, Type.Missing, Type.Missing, Type.Missing, Type.Missing, Type.Missing, Type.Missing, Type.Missing, Type.Missing, Type.Missing, Type.Missing, Type.Missing, Type.Missing);
                 var ws = (Excel.Worksheet)wb.Worksheets[1];
 
                 var pozNoSet = new HashSet<string>(_pozList.Select(p => p.PozNo), StringComparer.OrdinalIgnoreCase);
 
-                // Adım 1: Mevcut Kaynak satırlarını sil
                 int lastRow = ws.UsedRange.Rows.Count;
                 for (int r = lastRow; r >= 2; r--)
                 {
@@ -994,7 +900,6 @@ namespace BaranYardimci
                     ((Excel.Range)ws.Rows[r]).Delete(Excel.XlDeleteShiftDirection.xlShiftUp);
                 }
 
-                // Adım 2: Her pozun son satırını bul
                 lastRow = ws.UsedRange.Rows.Count;
                 var pozSonSatir = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
                 for (int r = 2; r <= lastRow; r++)
@@ -1005,7 +910,6 @@ namespace BaranYardimci
                     if (pozNoSet.Contains(pozNo)) pozSonSatir[pozNo] = r;
                 }
 
-                // Adım 3: Rota satırlarını ekle
                 var siraliPozlar = _pozList
                     .Where(p => pozSonSatir.ContainsKey(p.PozNo))
                     .OrderByDescending(p => pozSonSatir[p.PozNo])
@@ -1038,6 +942,11 @@ namespace BaranYardimci
                 }
 
                 wb.Save();
+
+                LogHelper.Yaz(_erpExcelYolu, "ROTA_KAYIT",
+                    $"{_pozList.Count} poz kaydedildi. " +
+                    string.Join(" | ", _pozList.Select(p => $"{p.PozNo}=[{RotaKoduOlustur(p.PozNo)}]")));
+
                 MessageBox.Show($"{_pozList.Count} poz için rota satırları kaydedildi.\n\n{_erpExcelYolu}", "Başarılı", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 DialogResult = DialogResult.OK;
                 Close();
