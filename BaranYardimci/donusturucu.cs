@@ -771,7 +771,7 @@ namespace BaranYardimci
             finally { Cursor.Current = Cursors.Default; }
         }
 
-        // ── ERP AKTARİM ───────────────────────────────────────────────────
+        // ── ERP AKTARİM ───────────────────────────────────────────        // ── ERP AKTARİM ───────────────────────────────────────────────────
 
         private void btnErpAktarim_Click(object sender, EventArgs e)
         {
@@ -800,7 +800,7 @@ namespace BaranYardimci
                 using (var conn = new SqlConnection(DB.ConnStr))
                 {
                     conn.Open();
-                    using (var cmd = new SqlCommand("SELECT no,adi FROM hammadde", conn))
+                    using (var cmd = new SqlCommand("SELECT no,adi FROM hammadde ORDER BY adi", conn))
                     using (var dr = cmd.ExecuteReader())
                         while (dr.Read()) hm.Add(new HammaddeItem { No = dr["no"]?.ToString() ?? "", Adi = dr["adi"]?.ToString() ?? "" });
                 }
@@ -823,10 +823,47 @@ namespace BaranYardimci
             foreach (var oz in ozet.Values)
             {
                 string key = oz.Profil + "|" + oz.Kalite;
-                bool b = false;
-                string vUp = oz.Profil.ToUpper().Replace(" ", "");
-                foreach (var h in hm) if (h.Adi.ToUpper().Replace(" ", "") == vUp) { esles[key] = h; b = true; break; }
-                if (!b) bulunamadi.Add(new BulunamadiItem { Profil = oz.Profil, Kalite = oz.Kalite, ToplamAdet = oz.ToplamAdet, ToplamAgirlik = Math.Round(oz.ToplamAgirlik, 2), Satirlar = profilSatirlar.ContainsKey(key) ? profilSatirlar[key] : new List<string>() });
+                // ── GELİŞTİRİLMİŞ EŞLEŞTİRME ─────────────────────────────
+                // Sıra: 1) Tam eşit  2) No tam eşit  3) StartsWith  4) Contains
+                string profNorm = oz.Profil.ToUpper().Replace(" ", "").Replace("-", "");
+                HammaddeItem bulunan = null;
+
+                // 1. Adi tam eşit (boşluk/tire normalize)
+                bulunan = hm.FirstOrDefault(h =>
+                    h.Adi.ToUpper().Replace(" ", "").Replace("-", "") == profNorm);
+
+                // 2. No tam eşit
+                if (bulunan == null)
+                    bulunan = hm.FirstOrDefault(h =>
+                        h.No.ToUpper().Replace(" ", "").Replace("-", "") == profNorm);
+
+                // 3. Adi StartsWith (PL*, HEA, IPE vb. prefix eşleşmesi)
+                if (bulunan == null)
+                {
+                    string prefix = profNorm.TrimEnd('*');
+                    bulunan = hm.FirstOrDefault(h =>
+                        h.Adi.ToUpper().Replace(" ", "").Replace("-", "").StartsWith(prefix)
+                        && prefix.Length >= 2);
+                }
+
+                // 4. Adi Contains
+                if (bulunan == null && profNorm.Length >= 3)
+                    bulunan = hm.FirstOrDefault(h =>
+                        h.Adi.ToUpper().Replace(" ", "").Replace("-", "").Contains(profNorm)
+                        || profNorm.Contains(h.Adi.ToUpper().Replace(" ", "").Replace("-", ""))
+                           && h.Adi.Length >= 3);
+
+                if (bulunan != null)
+                    esles[key] = bulunan;
+                else
+                    bulunamadi.Add(new BulunamadiItem
+                    {
+                        Profil = oz.Profil,
+                        Kalite = oz.Kalite,
+                        ToplamAdet = oz.ToplamAdet,
+                        ToplamAgirlik = Math.Round(oz.ToplamAgirlik, 2),
+                        Satirlar = profilSatirlar.ContainsKey(key) ? profilSatirlar[key] : new List<string>()
+                    });
             }
 
             if (bulunamadi.Count > 0)
@@ -835,7 +872,8 @@ namespace BaranYardimci
                 {
                     frm.StartPosition = FormStartPosition.CenterParent;
                     if (frm.ShowDialog(this) != DialogResult.OK) return;
-                    foreach (var kv in frm.Sonuclar) esles[kv.Key] = new HammaddeItem { No = kv.Value.No, Adi = kv.Value.Ad };
+                    foreach (var kv in frm.Sonuclar)
+                        esles[kv.Key] = new HammaddeItem { No = kv.Value.No, Adi = kv.Value.Ad };
                 }
             }
 
