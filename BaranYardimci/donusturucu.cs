@@ -434,30 +434,79 @@ namespace BaranYardimci
             if (pnlSonucButonlar == null) return;
             int panelWidth = pnlSonucButonlar.ClientSize.Width;
             int padding = 8;
+            int y = 8;
+
+            // ─── SOL TARAF ───────────────────────────────────────────────
+            int leftX = padding;
+
+            if (btnSil != null)
+            {
+                btnSil.Location = new Point(leftX, y);
+                leftX += btnSil.Width + padding;
+            }
+            try
+            {
+                if (btnHesapla != null && btnHesapla.Visible)
+                {
+                    btnHesapla.Location = new Point(leftX, y);
+                    leftX += btnHesapla.Width + padding;
+                }
+                if (btnMalzemeExcel != null && btnMalzemeExcel.Visible)
+                {
+                    btnMalzemeExcel.Location = new Point(leftX, y);
+                    leftX += btnMalzemeExcel.Width + padding;
+                }
+                if (btnErpAktarim != null && btnErpAktarim.Visible)
+                {
+                    btnErpAktarim.Location = new Point(leftX, y);
+                    leftX += btnErpAktarim.Width + padding;
+                }
+            }
+            catch { }
+
+            // ─── SAĞ TARAF ───────────────────────────────────────────────
             int rightX = panelWidth - padding;
 
             if (btnTumExcel != null)
             {
                 rightX -= btnTumExcel.Width;
-                btnTumExcel.Location = new Point(rightX, 8);
+                btnTumExcel.Location = new Point(rightX, y);
                 rightX -= padding;
             }
             if (_btnSatinAlim != null)
             {
                 rightX -= _btnSatinAlim.Width;
-                _btnSatinAlim.Location = new Point(rightX, 8);
+                _btnSatinAlim.Location = new Point(rightX, y);
                 rightX -= padding;
             }
             if (_btnMalzemeOzet != null)
             {
                 rightX -= _btnMalzemeOzet.Width;
-                _btnMalzemeOzet.Location = new Point(rightX, 8);
+                _btnMalzemeOzet.Location = new Point(rightX, y);
                 rightX -= padding;
             }
             if (btnExceliAc != null)
             {
                 rightX -= btnExceliAc.Width;
-                btnExceliAc.Location = new Point(rightX, 8);
+                btnExceliAc.Location = new Point(rightX, y);
+                rightX -= padding;
+            }
+
+            // ─── ÇAKIŞMA UYARISI (sadece debug için, görsel uyarı) ─────────
+            if (leftX > rightX + padding)
+            {
+                // butonlar sığmıyor — panelin yüksekliğini iki satıra çıkar
+                if (pnlSonucButonlar.Height < 110)
+                {
+                    pnlSonucButonlar.Height = 110;
+                    // Sağ butonları ikinci satıra al
+                    int y2 = y + 52;
+                    int rx = panelWidth - padding;
+                    if (btnTumExcel != null) { rx -= btnTumExcel.Width; btnTumExcel.Location = new Point(rx, y2); rx -= padding; }
+                    if (_btnSatinAlim != null) { rx -= _btnSatinAlim.Width; _btnSatinAlim.Location = new Point(rx, y2); rx -= padding; }
+                    if (_btnMalzemeOzet != null) { rx -= _btnMalzemeOzet.Width; _btnMalzemeOzet.Location = new Point(rx, y2); rx -= padding; }
+                    if (btnExceliAc != null) { rx -= btnExceliAc.Width; btnExceliAc.Location = new Point(rx, y2); rx -= padding; }
+                }
             }
         }
         private void btnMalzemeOzet_Click(object sender, EventArgs e)
