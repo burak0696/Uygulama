@@ -1032,15 +1032,10 @@ namespace BaranYardimci
             if (_tumVeriler.Count == 0) { MessageBox.Show("Veri yok!"); return; }
             dgvDosyalar.EndEdit();
 
-            // Proje no yoksa sor
             if (string.IsNullOrEmpty(_projeNo))
             {
                 if (!ProjeNoSor(acilis: false))
-                {
-                    MessageBox.Show("Proje numarası girilmeden ERP aktarımı yapılamaz.",
-                        "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
+                { MessageBox.Show("Proje numarası girilmeden ERP aktarımı yapılamaz.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
                 GosterProjeNoBaslikta();
             }
 
@@ -1062,7 +1057,7 @@ namespace BaranYardimci
             }
             catch (Exception ex) { MessageBox.Show("DB: " + ex.Message); return; }
 
-            // ── Eşleştirme ───────────────────────────────────────────────
+            // ── Eşleştirme (TÜM dosyalar için ortak — kullanıcıyı tek seferde sorar) ──
             var esles = new Dictionary<string, HammaddeItem>(StringComparer.OrdinalIgnoreCase);
             var bulunamadi = new List<BulunamadiItem>();
             var profilSatirlar = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
@@ -1099,81 +1094,104 @@ namespace BaranYardimci
                 }
             }
 
-            // ── TEK EXCEL — Tüm dosyalar tek dosyada ──────────────────────
-            string ilkAd = dgvDosyalar.Rows.Count > 0
-                ? TemizleDocSoneki(Path.GetFileNameWithoutExtension(dgvDosyalar.Rows[0].Cells["colDosyaAdi"].Value?.ToString() ?? ""))
-                : "ERP";
-            string projeOnEk = string.IsNullOrEmpty(_projeNo) ? "" : _projeNo + "_";
-            string ciktiAdi = projeOnEk + (string.IsNullOrEmpty(ilkAd) ? "ERP" : ilkAd) + "_ERPAKTARIM.xlsx";
-
             string projeNoKullan = string.IsNullOrEmpty(_projeNo) ? "PROJE_NO_GIRILMEDI" : _projeNo;
 
-            string kaydedilenYol = AcExcelVeKaydet(ciktiAdi, xa =>
+            // ── HER DOSYA İÇİN AYRI EXCEL ÜRET ───────────────────────────
+            int basarili = 0, atlanan = 0;
+            string sonKaydedilen = "";
+
+            foreach (DataGridViewRow dgvRow in dgvDosyalar.Rows)
             {
-                string[] headers = { "Proje No", "Poz No", "Poz Açıklaması", "Ana Poz No", "Poz Miktar", "Poz Ağırlık", "Bileşen Türü", "Bileşen No", "Bileşen Miktar", "İşlem Sırası" };
-                for (int i = 0; i < headers.Length; i++) Yaz(xa, 1, i + 1, headers[i]);
-                int excelRow = 2;
-                var yazılanAnaPozlar = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                if (dgvRow.IsNewRow) continue;
+                string dosyaYolu = dgvRow.Cells["colDosyaYolu"].Value?.ToString() ?? "";
+                string dosyaAdi = dgvRow.Cells["colDosyaAdi"].Value?.ToString() ?? "";
+                if (string.IsNullOrEmpty(dosyaYolu)) continue;
 
-                foreach (var docGroup in _tumVeriler.GroupBy(v => v.DosyaId).OrderBy(g => g.Key))
+                // Bu dosyaya ait veriler
+                var docVeriler = _tumVeriler.Where(v => v.DosyaId == dosyaYolu).ToList();
+                if (docVeriler.Count == 0) { atlanan++; continue; }
+
+                double sip = sm.ContainsKey(dosyaYolu) ? sm[dosyaYolu] : 1;
+                string dosyaAdSiz = TemizleDocSoneki(Path.GetFileNameWithoutExtension(dosyaAdi));
+                string ciktiAdi = projeNoKullan + "_" + dosyaAdSiz + "_ERPAKTARIM.xlsx";
+
+                string kaydedilenYol = AcExcelVeKaydet(ciktiAdi, xa =>
                 {
-                    string docAdi = TemizleDocSoneki(Path.GetFileNameWithoutExtension(docGroup.First().DosyaAdi));
-                    double sip = sm.ContainsKey(docGroup.Key) ? sm[docGroup.Key] : 1;
+                    string[] headers = { "Proje No", "Poz No", "Poz Açıklaması", "Ana Poz No", "Poz Miktar",
+                                 "Poz Ağırlık", "Bileşen Türü", "Bileşen No", "Bileşen Miktar", "İşlem Sırası" };
+                    for (int i = 0; i < headers.Length; i++) Yaz(xa, 1, i + 1, headers[i]);
 
-                    foreach (var montajGroup in docGroup.GroupBy(v => (v.MontajNo ?? "").Trim()).OrderBy(g => g.Key))
+                    int excelRow = 2;
+                    var yazılanAnaPozlar = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                    foreach (var montajGroup in docVeriler.GroupBy(v => (v.MontajNo ?? "").Trim()).OrderBy(g => g.Key))
                     {
                         string montajNo = montajGroup.Key;
                         bool hasMontaj = !string.IsNullOrWhiteSpace(montajNo);
                         bool tekParca = montajGroup.Count() == 1;
 
-                        if (hasMontaj && !tekParca)
+                        if (hasMontaj && !tekParca && !yazılanAnaPozlar.Contains(montajNo))
                         {
-                            string apKey = docGroup.Key + "||" + montajNo;
-                            if (!yazılanAnaPozlar.Contains(apKey))
-                            {
-                                yazılanAnaPozlar.Add(apKey);
-                                double mAg = montajGroup.Sum(v => sip * v.MontajAdeti * v.BirimAdet * v.Agirlik);
-                                Yaz(xa, excelRow, 1, projeNoKullan); Yaz(xa, excelRow, 2, montajNo); Yaz(xa, excelRow, 3, montajNo);
-                                Yaz(xa, excelRow, 4, docAdi);
-                                Yaz(xa, excelRow, 5, Math.Round(montajGroup.First().MontajAdeti * sip, 2));
-                                Yaz(xa, excelRow, 6, Math.Round(mAg, 2));
-                                Yaz(xa, excelRow, 7, "Kaynak"); Yaz(xa, excelRow, 8, "Kaynaklama");
-                                Yaz(xa, excelRow, 9, 1); Yaz(xa, excelRow, 10, ""); excelRow++;
-                            }
+                            yazılanAnaPozlar.Add(montajNo);
+                            double mAg = montajGroup.Sum(v => sip * v.MontajAdeti * v.BirimAdet * v.Agirlik);
+                            Yaz(xa, excelRow, 1, projeNoKullan);
+                            Yaz(xa, excelRow, 2, montajNo);
+                            Yaz(xa, excelRow, 3, montajNo);
+                            Yaz(xa, excelRow, 4, dosyaAdSiz);
+                            Yaz(xa, excelRow, 5, Math.Round(montajGroup.First().MontajAdeti * sip, 2));
+                            Yaz(xa, excelRow, 6, Math.Round(mAg, 2));
+                            Yaz(xa, excelRow, 7, "Kaynak");
+                            Yaz(xa, excelRow, 8, "Kaynaklama");
+                            Yaz(xa, excelRow, 9, 1);
+                            Yaz(xa, excelRow, 10, "");
+                            excelRow++;
                         }
 
                         foreach (var v in montajGroup.OrderBy(x => x.ParcaNo))
                         {
-                            string anaPoz = (hasMontaj && !tekParca) ? montajNo : docAdi;
+                            string anaPoz = (hasMontaj && !tekParca) ? montajNo : dosyaAdSiz;
                             string key = PG(v.ParcaProfil) + "|" + KD(v.Kalite);
                             bool e2 = esles.ContainsKey(key);
                             double urt = sip * v.MontajAdeti * v.BirimAdet;
-                            Yaz(xa, excelRow, 1, projeNoKullan); Yaz(xa, excelRow, 2, (v.ParcaNo ?? "").Trim());
-                            Yaz(xa, excelRow, 3, (v.ParcaNo ?? "").Trim()); Yaz(xa, excelRow, 4, anaPoz);
+                            Yaz(xa, excelRow, 1, projeNoKullan);
+                            Yaz(xa, excelRow, 2, (v.ParcaNo ?? "").Trim());
+                            Yaz(xa, excelRow, 3, (v.ParcaNo ?? "").Trim());
+                            Yaz(xa, excelRow, 4, anaPoz);
                             Yaz(xa, excelRow, 5, Math.Round(v.MontajAdeti * sip, 2));
                             Yaz(xa, excelRow, 6, Math.Round(urt * v.Agirlik, 2));
-                            Yaz(xa, excelRow, 7, "Madde"); Yaz(xa, excelRow, 8, e2 ? esles[key].No : "");
-                            Yaz(xa, excelRow, 9, Math.Round(urt, 2)); Yaz(xa, excelRow, 10, 1); excelRow++;
+                            Yaz(xa, excelRow, 7, "Madde");
+                            Yaz(xa, excelRow, 8, e2 ? esles[key].No : "");
+                            Yaz(xa, excelRow, 9, Math.Round(urt, 2));
+                            Yaz(xa, excelRow, 10, 1);
+                            excelRow++;
                         }
                     }
-                }
-            });
+                });
 
-            // ── Kaydedildiyse tüm satırları işaretle ────────────────────
-            if (!string.IsNullOrEmpty(kaydedilenYol))
-            {
-                _sonKaydedilenExcel = kaydedilenYol;
-                foreach (DataGridViewRow row in dgvDosyalar.Rows)
+                if (!string.IsNullOrEmpty(kaydedilenYol))
                 {
-                    string y = row.Cells["colDosyaYolu"].Value?.ToString() ?? "";
-                    if (string.IsNullOrEmpty(y)) continue;
-                    _erpAktarimYapilan.Add(y);
-                    _erpExcelYollari[y] = kaydedilenYol;
-                    try { row.Cells["colDurum"].Value = "🟡 ERP Aktarıldı — rota bekleniyor"; } catch { }
+                    _erpAktarimYapilan.Add(dosyaYolu);
+                    _erpExcelYollari[dosyaYolu] = kaydedilenYol;     // ← HER DOSYA KENDİ EXCEL'İNE
+                    try { dgvRow.Cells["colDurum"].Value = "🟡 ERP Aktarıldı — rota bekleniyor"; } catch { }
+                    sonKaydedilen = kaydedilenYol;
+                    basarili++;
                 }
-                TumSatirlariRenklendir();
-                DurumGuncelle();
+                else
+                {
+                    atlanan++;
+                }
             }
+
+            if (!string.IsNullOrEmpty(sonKaydedilen)) _sonKaydedilenExcel = sonKaydedilen;
+            TumSatirlariRenklendir();
+            DurumGuncelle();
+
+            MessageBox.Show(
+                $"📊 ERP Aktarım tamamlandı\n\n" +
+                $"✅ Başarılı: {basarili} dosya\n" +
+                (atlanan > 0 ? $"⚠ Atlanan/iptal: {atlanan} dosya\n" : "") +
+                $"\n📁 Son kayıt:\n{sonKaydedilen}",
+                "Tamam", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
         // ── TÜM EXCEL OLUŞTUR ─────────────────────────────────────────────
         private void btnTumExcel_Click(object sender, EventArgs e)
