@@ -237,6 +237,21 @@ namespace BaranYardimci
                 btnTumExcel.FlatAppearance.BorderSize = 0;
                 btnTumExcel.Click += btnTumExcel_Click;
                 pnlSonucButonlar.Controls.Add(btnTumExcel);
+                var btnMalzemeOzet = new Button
+                {
+                    Text = "📊  Malzeme Özet",
+                    Size = new Size(160, 48),
+                    Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+                    FlatStyle = FlatStyle.Flat,
+                    BackColor = Color.FromArgb(0, 120, 100),
+                    ForeColor = Color.White,
+                    Cursor = Cursors.Hand,
+                    Anchor = AnchorStyles.Top | AnchorStyles.Right
+                };
+                btnMalzemeOzet.FlatAppearance.BorderSize = 0;
+                btnMalzemeOzet.Click += btnMalzemeOzet_Click;
+                pnlSonucButonlar.Controls.Add(btnMalzemeOzet);
+                this._btnMalzemeOzet = btnMalzemeOzet;
 
                 pnlSonucButonlar.Resize -= pnlSonucButonlar_Resize;
                 pnlSonucButonlar.Resize += pnlSonucButonlar_Resize;
@@ -556,53 +571,7 @@ namespace BaranYardimci
             // ── Durum metnini de hep aynı yerden set et — artık çelişki olamaz
             try { row.Cells["colDurum"].Value = durumMetin; } catch { }
         }
-        private void SatirlariRenklendir()
-        {
-            try
-            {
-                for (int i = 0; i < dgvDosyalar.RowCount; i++)
-                {
-                    var row = dgvDosyalar.Rows[i];
-                    if (row.IsNewRow) continue;
-                    string yol = row.Cells["colDosyaYolu"].Value?.ToString() ?? "";
-
-                    Color bg, fg, selBg, selFg;
-                    if (_civataEklendi.Contains(yol))
-                    {
-                        bg = Color.FromArgb(180, 240, 200); fg = Color.FromArgb(0, 90, 0);
-                        selBg = Color.FromArgb(140, 210, 160); selFg = Color.FromArgb(0, 60, 0);
-                    }
-                    else if (_rotaKaydedilen.Contains(yol))
-                    {
-                        bg = Color.FromArgb(180, 210, 255); fg = Color.FromArgb(0, 50, 130);
-                        selBg = Color.FromArgb(140, 175, 230); selFg = Color.FromArgb(0, 30, 100);
-                    }
-                    else if (_erpAktarimYapilan.Contains(yol))
-                    {
-                        bg = Color.FromArgb(255, 243, 180); fg = Color.FromArgb(110, 80, 0);
-                        selBg = Color.FromArgb(220, 205, 130); selFg = Color.FromArgb(80, 55, 0);
-                    }
-                    else
-                    {
-                        bg = Color.FromArgb(255, 200, 200); fg = Color.FromArgb(120, 0, 0);
-                        selBg = Color.FromArgb(220, 160, 160); selFg = Color.FromArgb(80, 0, 0);
-                    }
-
-                    var style = new DataGridViewCellStyle
-                    {
-                        BackColor = bg,
-                        ForeColor = fg,
-                        SelectionBackColor = selBg,
-                        SelectionForeColor = selFg
-                    };
-                    row.DefaultCellStyle = style;
-                    foreach (DataGridViewCell c in row.Cells)
-                        c.Style = style;
-                }
-                dgvDosyalar.Invalidate();
-            }
-            catch { }
-        }
+      
         private void TumSatirlariRenklendir()
         {
             for (int i = 0; i < dgvDosyalar.RowCount; i++)
@@ -1094,7 +1063,6 @@ namespace BaranYardimci
             dgvDosyalar.Rows.Clear(); dgvSonuc.Rows.Clear();
             _tumVeriler.Clear(); _erpAktarimYapilan.Clear(); _rotaKaydedilen.Clear();
             _civataEklendi.Clear(); _erpExcelYollari.Clear(); _sonKaydedilenExcel = "";
-            SatirlariRenklendir();
             DurumGuncelle();
         }
         private void btnHesapla_Click(object sender, EventArgs e)
@@ -1320,21 +1288,6 @@ namespace BaranYardimci
                     "Proje Numarası Gerekli", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
-            var btnMalzemeOzet = new Button
-            {
-                Text = "📊  Malzeme Özet",
-                Size = new Size(160, 48),
-                Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(0, 120, 100),
-                ForeColor = Color.White,
-                Cursor = Cursors.Hand,
-                Anchor = AnchorStyles.Top | AnchorStyles.Right
-            };
-            btnMalzemeOzet.FlatAppearance.BorderSize = 0;
-            btnMalzemeOzet.Click += btnMalzemeOzet_Click;
-            pnlSonucButonlar.Controls.Add(btnMalzemeOzet);
-            this._btnMalzemeOzet = btnMalzemeOzet;
             // dgvDosyalar sırasına göre unique ERP Excel yollarını topla
             var erpExcelSirali = new List<string>();
             foreach (DataGridViewRow row in dgvDosyalar.Rows)
