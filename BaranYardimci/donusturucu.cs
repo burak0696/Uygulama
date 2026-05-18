@@ -840,10 +840,28 @@ namespace BaranYardimci
         }
 
         private void CivataExceleEkle(string excelYol, List<CivataSatir> civatalar,
-        Dictionary<string, HammaddeItem> esles, string dosyaYolu, double siparisAdeti)
+    Dictionary<string, HammaddeItem> esles, string dosyaYolu, double siparisAdeti)
         {
             if (!DosyaErisebilir(excelYol)) AgaBaglan();
             if (!DosyaErisebilir(excelYol)) { MessageBox.Show("ERP Excel'e erişilemiyor:\n" + excelYol, "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error); return; }
+
+            // ── A dosyasının adını al (BoltList adı yerine bunu kullanacağız) ──
+            string dosyaAdi = "";
+            try
+            {
+                foreach (DataGridViewRow row in dgvDosyalar.Rows)
+                {
+                    if (row.IsNewRow) continue;
+                    if ((row.Cells["colDosyaYolu"].Value?.ToString() ?? "") == dosyaYolu)
+                    {
+                        dosyaAdi = row.Cells["colDosyaAdi"].Value?.ToString() ?? "";
+                        break;
+                    }
+                }
+            }
+            catch { }
+            if (string.IsNullOrEmpty(dosyaAdi)) dosyaAdi = Path.GetFileName(dosyaYolu);
+            string dosyaAdSiz = TemizleDocSoneki(Path.GetFileNameWithoutExtension(dosyaAdi));
 
             Cursor.Current = Cursors.WaitCursor;
             Excel.Application app = null; Excel.Workbook wb = null;
@@ -853,30 +871,29 @@ namespace BaranYardimci
                 wb = app.Workbooks.Open(excelYol, false, false, Type.Missing, Type.Missing, Type.Missing, Type.Missing, Type.Missing, Type.Missing, Type.Missing, Type.Missing, Type.Missing, Type.Missing, Type.Missing, Type.Missing);
                 var ws = (Excel.Worksheet)wb.Worksheets[1];
 
+                // Proje No'yu ERP Excel'in 2. satırından oku (zaten oraya yazılmıştı)
                 object projeNoV = null;
                 int lastRow = ws.UsedRange.Rows.Count;
                 for (int r = 2; r <= lastRow; r++) { projeNoV = ((Excel.Range)ws.Cells[r, 1]).Value2; if (projeNoV != null) break; }
 
                 int satirNo = lastRow + 1;
-                foreach (var grp in civatalar.GroupBy(c => c.BoltListAdi))
+                foreach (var cv in civatalar.OrderBy(c => c.Dia).ThenBy(c => c.Length))
                 {
-                    foreach (var cv in grp.OrderBy(c => c.Dia).ThenBy(c => c.Length))
-                    {
-                        bool eslestiMi = esles.ContainsKey(cv.EslesKey);
-                        string hmNo = eslestiMi ? esles[cv.EslesKey].No : "";
-                        string hmAdi = eslestiMi ? esles[cv.EslesKey].Adi : cv.Tanim;
-                        Yaz(ws, satirNo, 1, projeNoV);
-                        Yaz(ws, satirNo, 2, grp.Key);
-                        Yaz(ws, satirNo, 3, hmAdi);
-                        Yaz(ws, satirNo, 4, null);
-                        Yaz(ws, satirNo, 5, siparisAdeti);
-                        Yaz(ws, satirNo, 6, cv.ToplamAgirlik);
-                        Yaz(ws, satirNo, 7, "MADDE");
-                        Yaz(ws, satirNo, 8, hmNo);
-                        Yaz(ws, satirNo, 9, cv.Quantity);
-                        Yaz(ws, satirNo, 10, null);
-                        satirNo++;
-                    }
+                    bool eslestiMi = esles.ContainsKey(cv.EslesKey);
+                    string hmNo = eslestiMi ? esles[cv.EslesKey].No : "";
+                    string hmAdi = eslestiMi ? esles[cv.EslesKey].Adi : cv.Tanim;
+
+                    Yaz(ws, satirNo, 1, projeNoV);          // Proje No  → ERP'den okunan
+                    Yaz(ws, satirNo, 2, cv.PozNo);          // Poz No    → civatanın kendi pozu (Mxx_xx)
+                    Yaz(ws, satirNo, 3, hmAdi);             // Poz Açıklaması → hammadde adı / tanım
+                    Yaz(ws, satirNo, 4, dosyaAdSiz);        // Ana Poz No → A DOSYASININ ADI (civata listesi adı DEĞİL)
+                    Yaz(ws, satirNo, 5, siparisAdeti);      // Poz Miktar
+                    Yaz(ws, satirNo, 6, cv.ToplamAgirlik);  // Poz Ağırlık
+                    Yaz(ws, satirNo, 7, "Madde");           // Bileşen Türü → "Madde" (KÜÇÜK harf, "MADDE" DEĞİL)
+                    Yaz(ws, satirNo, 8, hmNo);              // Bileşen No
+                    Yaz(ws, satirNo, 9, cv.Quantity);       // Bileşen Miktar
+                    Yaz(ws, satirNo, 10, 1);                // İşlem Sırası → 1 (ERP'deki gibi)
+                    satirNo++;
                 }
 
                 wb.Save();
