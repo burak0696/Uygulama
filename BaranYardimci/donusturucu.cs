@@ -395,7 +395,16 @@ namespace BaranYardimci
             if (rowIdx < 0 || rowIdx >= dgvDosyalar.RowCount) return;
             var row = dgvDosyalar.Rows[rowIdx];
             if (row.IsNewRow) return;
-            string yol = row.Cells["colDosyaYolu"].Value?.ToString() ?? "";
+
+            string yol = "";
+            try { yol = row.Cells["colDosyaYolu"].Value?.ToString() ?? ""; } catch { }
+
+            // DEBUG: hangi satıra ne renk gidiyor — Output'a bas
+            string kategori = _civataEklendi.Contains(yol) ? "YEŞIL (civata)"
+                            : _rotaKaydedilen.Contains(yol) ? "MAVI (rota)"
+                            : _erpAktarimYapilan.Contains(yol) ? "SARI (erp)"
+                            : "KIRMIZI (yeni)";
+            System.Diagnostics.Debug.WriteLine($"[Renk] Satır {rowIdx}  yol='{yol}'  → {kategori}");
 
             Color bg, fg, selBg, selFg;
             if (_civataEklendi.Contains(yol))
@@ -819,7 +828,18 @@ namespace BaranYardimci
                 string ad = Path.GetFileName(yol);
                 int n = DosyaOku(yol, ad);
                 if (n <= 0) { MessageBox.Show("Okunamadi: " + ad); continue; }
-                dgvDosyalar.Rows.Add(ad, "1", yol, "Yüklendi");
+
+                // ── İsim bazlı güvenli satır ekleme ──
+                int idx = dgvDosyalar.Rows.Add();
+                var newRow = dgvDosyalar.Rows[idx];
+                try { newRow.Cells["colDosyaAdi"].Value = ad; } catch { }
+                try { newRow.Cells["colSiparisAdeti"].Value = "1"; } catch { }
+                try { newRow.Cells["colDosyaYolu"].Value = yol; } catch { }
+                try { newRow.Cells["colDurum"].Value = "Yüklendi"; } catch { }
+
+                // Hemen bu satırı renklendir — yeni satır kesin KIRMIZI olacak
+                SatirRenklendir(idx);
+
                 ok++; top += n;
             }
 
