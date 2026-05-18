@@ -41,7 +41,7 @@
             this.colToplamAdet = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.colToplamUzunluk = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.colToplamAgirlik = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.pnlSonucButonlar = new System.Windows.Forms.Panel();
+            this.pnlSonucButonlar = new System.Windows.Forms.FlowLayoutPanel();
             this.btnErpAktarim = new System.Windows.Forms.Button();
             this.btnMalzemeExcel = new System.Windows.Forms.Button();
             this.btnHamDataExcel = new System.Windows.Forms.Button();
@@ -350,43 +350,43 @@
             this.colToplamUzunluk.FillWeight = 20F; this.colToplamUzunluk.HeaderText = "Toplam Uzunluk (mm)"; this.colToplamUzunluk.Name = "colToplamUzunluk"; this.colToplamUzunluk.ReadOnly = true;
             this.colToplamAgirlik.FillWeight = 20F; this.colToplamAgirlik.HeaderText = "Toplam Ağırlık (kg)"; this.colToplamAgirlik.Name = "colToplamAgirlik"; this.colToplamAgirlik.ReadOnly = true;
 
-            // ── pnlSonucButonlar ──────────────────────────────────────────
-            this.pnlSonucButonlar.Controls.Add(this.btnErpAktarim);
-            this.pnlSonucButonlar.Controls.Add(this.btnMalzemeExcel);
-            this.pnlSonucButonlar.Controls.Add(this.btnHamDataExcel);
-            this.pnlSonucButonlar.Controls.Add(this.btnHesapla);
+            // ── pnlSonucButonlar  (FlowLayoutPanel — otomatik dizilim) ────
             this.pnlSonucButonlar.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.pnlSonucButonlar.Padding = new System.Windows.Forms.Padding(0, 6, 0, 0);
+            this.pnlSonucButonlar.FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight;
+            this.pnlSonucButonlar.WrapContents = true;
+            this.pnlSonucButonlar.AutoSize = false;
+            this.pnlSonucButonlar.Padding = new System.Windows.Forms.Padding(6, 6, 6, 6);
             this.pnlSonucButonlar.Size = new System.Drawing.Size(1095, 62);
+            this.pnlSonucButonlar.BackColor = System.Drawing.Color.FromArgb(248, 248, 252);
 
+            // Sol taraf butonları (sırayla soldan sağa eklenir)
             BtnStyle(this.btnHesapla, "Hesapla", System.Drawing.Color.FromArgb(0, 122, 204));
-            BtnStyle(this.btnHamDataExcel, "Ham Data - Excel", System.Drawing.Color.FromArgb(34, 139, 34));
             BtnStyle(this.btnMalzemeExcel, "Malzeme İhtiyacı", System.Drawing.Color.FromArgb(178, 34, 34));
             BtnStyle(this.btnErpAktarim, "ERP Aktarım  →  Ağa Kaydet", System.Drawing.Color.FromArgb(0, 130, 120));
+            BtnStyle(this.btnHamDataExcel, "Ham Data - Excel", System.Drawing.Color.FromArgb(34, 139, 34));
 
-            // Butonları yeniden boyutlandır ve yerleştir
-            // DİKKAT: btnSil runtime'da 8,8 konumuna ekleniyor, ona yer açıyoruz
-            this.btnHesapla.Size = new System.Drawing.Size(160, 48);
-            this.btnMalzemeExcel.Size = new System.Drawing.Size(170, 48);
-            this.btnErpAktarim.Size = new System.Drawing.Size(220, 48);
-
-            // btnSil için 150px boşluk bırakıyoruz (8px başlangıç + 140px buton + 8px boşluk = 156px)
-            this.btnHesapla.Location = new System.Drawing.Point(160, 8);
-            this.btnHamDataExcel.Location = new System.Drawing.Point(210, 8); 
+            this.btnHesapla.Size = new System.Drawing.Size(140, 44);
+            this.btnMalzemeExcel.Size = new System.Drawing.Size(170, 44);
+            this.btnErpAktarim.Size = new System.Drawing.Size(220, 44);
+            this.btnHamDataExcel.Size = new System.Drawing.Size(150, 44);
             this.btnHamDataExcel.Visible = false;
-            this.btnMalzemeExcel.Location = new System.Drawing.Point(330, 8);
-            this.btnErpAktarim.Location = new System.Drawing.Point(510, 8);
 
-            // Anchor ayarları
-            this.btnHesapla.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
-            this.btnMalzemeExcel.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
-            this.btnErpAktarim.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            // Margin ile boşluk
+            this.btnHesapla.Margin = new System.Windows.Forms.Padding(4);
+            this.btnMalzemeExcel.Margin = new System.Windows.Forms.Padding(4);
+            this.btnErpAktarim.Margin = new System.Windows.Forms.Padding(4);
+            this.btnHamDataExcel.Margin = new System.Windows.Forms.Padding(4);
+
+            // Ekleme sırası = soldan sağa dizilim sırası
+            this.pnlSonucButonlar.Controls.Add(this.btnHesapla);
+            this.pnlSonucButonlar.Controls.Add(this.btnMalzemeExcel);
+            this.pnlSonucButonlar.Controls.Add(this.btnErpAktarim);
+            this.pnlSonucButonlar.Controls.Add(this.btnHamDataExcel);
 
             this.btnHesapla.Click += new System.EventHandler(this.btnHesapla_Click);
             this.btnHamDataExcel.Click += new System.EventHandler(this.btnHamDataExcel_Click);
             this.btnMalzemeExcel.Click += new System.EventHandler(this.btnMalzemeExcel_Click);
             this.btnErpAktarim.Click += new System.EventHandler(this.btnErpAktarim_Click);
-
             // ── pnlSonucButonlar2 ─────────────────────────────────────────
             this.pnlSonucButonlar2.Controls.Add(this.btnGalvanizEkran);
             this.pnlSonucButonlar2.Controls.Add(this.btnVeritabaniKaydet);
@@ -485,7 +485,7 @@
         private System.Windows.Forms.DataGridViewTextBoxColumn colToplamAdet;
         private System.Windows.Forms.DataGridViewTextBoxColumn colToplamUzunluk;
         private System.Windows.Forms.DataGridViewTextBoxColumn colToplamAgirlik;
-        private System.Windows.Forms.Panel pnlSonucButonlar;
+        private System.Windows.Forms.FlowLayoutPanel pnlSonucButonlar;
         private System.Windows.Forms.Button btnHesapla;
         private System.Windows.Forms.Button btnHamDataExcel;
         private System.Windows.Forms.Button btnMalzemeExcel;
