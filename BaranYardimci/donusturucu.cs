@@ -335,8 +335,25 @@ namespace BaranYardimci
                 btnExceliAc.Location = new Point(rightX, 8);
             }
         }
+        private void Donusturucu_Load(object sender, EventArgs e)
+        {
+            DurumGuncelle();
+            // Açılışta hemen proje no sor
+            this.BeginInvoke(new Action(() => { ProjeNoSor(acilis: true); GosterProjeNoBaslikta(); }));
+        }
 
-        private void Donusturucu_Load(object sender, EventArgs e) => DurumGuncelle();
+        private void GosterProjeNoBaslikta()
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(_projeNo))
+                    this.Text = "Dönüştürücü  —  Proje: " + _projeNo;
+                else
+                    this.Text = "Dönüştürücü  —  (Proje No girilmedi)";
+            }
+            catch { }
+        }
+
 
         private void DurumGuncelle()
         {
@@ -745,10 +762,23 @@ namespace BaranYardimci
             foreach (string yol in ofd.FileNames)
             {
                 if (DosyaVarMi(yol)) continue;
-                string ad = Path.GetFileName(yol); int n = DosyaOku(yol, ad);
-                if (n > 0) { dgvDosyalar.Rows.Add(ad, "1", yol, "Yüklendi"); ok++; top += n; }
+                string ad = Path.GetFileName(yol);
+                int n = DosyaOku(yol, ad);
+                if (n > 0)
+                {
+                    int idx = dgvDosyalar.Rows.Add(ad, "1", yol, "Yüklendi");
+                    // YENİ SATIRIN ESKİ STYLE CACHE'İNİ ANINDA TEMİZLE
+                    try
+                    {
+                        dgvDosyalar.Rows[idx].DefaultCellStyle = new DataGridViewCellStyle();
+                        dgvDosyalar.InvalidateRow(idx);
+                    }
+                    catch { }
+                    ok++; top += n;
+                }
                 else MessageBox.Show("Okunamadi: " + ad);
             }
+
             if (ok > 0)
             {
                 try
@@ -765,12 +795,95 @@ namespace BaranYardimci
                 DurumGuncelle();
                 MessageBox.Show(
                     $"✅  {ok} dosya yüklendi, {top} parça okundu.\n\n" +
-                    "Lütfen önce bu üründen kaç adet sipariş verildiğini giriniz\n" +
-                    "ve sonrasında  💾 Miktar Kaydet  butonuna tıklayınız.",
+                    "Sipariş adedini girip  💾 Miktar Kaydet  butonuna tıklayınız.",
                     "Dosya Yüklendi", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
-       
+
+        private bool ProjeNoSor(bool acilis = false)
+        {
+            using (var frmPrj = new Form())
+            {
+                frmPrj.Text = acilis ? "Proje Numarası Girişi" : "Proje Numarası";
+                frmPrj.Size = new Size(520, 230);
+                frmPrj.StartPosition = FormStartPosition.CenterParent;
+                frmPrj.FormBorderStyle = FormBorderStyle.FixedDialog;
+                frmPrj.MaximizeBox = false; frmPrj.MinimizeBox = false;
+                frmPrj.BackColor = Color.FromArgb(245, 245, 250);
+
+                var lblAcik = new Label
+                {
+                    Text = acilis
+                        ? "Bu oturumda kullanılacak proje numarasını giriniz.\n(Tüm dosyalar için aynı numara kullanılacak)"
+                        : "Proje numarasını şimdi girmek ister misiniz?",
+                    Dock = DockStyle.Top,
+                    Height = 56,
+                    Font = new Font("Segoe UI", 10f),
+                    TextAlign = ContentAlignment.MiddleCenter
+                };
+                var txtPrj = new TextBox
+                {
+                    Dock = DockStyle.Top,
+                    Height = 40,
+                    Font = new Font("Segoe UI", 13f, FontStyle.Bold),
+                    TextAlign = HorizontalAlignment.Center,
+                    Text = _projeNo
+                };
+                var pnlBtn = new Panel { Dock = DockStyle.Bottom, Height = 56 };
+
+                var btnGir = new Button
+                {
+                    Text = "✔  Proje No Gir",
+                    DialogResult = DialogResult.OK,
+                    Dock = DockStyle.Left,
+                    Width = 200,
+                    FlatStyle = FlatStyle.Flat,
+                    BackColor = Color.FromArgb(0, 122, 180),
+                    ForeColor = Color.White,
+                    Font = new Font("Segoe UI", 10f, FontStyle.Bold)
+                };
+                var btnSonra = new Button
+                {
+                    Text = "⏭  Daha Sonra",
+                    DialogResult = DialogResult.Ignore,
+                    Dock = DockStyle.Right,
+                    Width = 200,
+                    FlatStyle = FlatStyle.Flat,
+                    BackColor = Color.FromArgb(90, 90, 105),
+                    ForeColor = Color.White,
+                    Font = new Font("Segoe UI", 10f, FontStyle.Bold)
+                };
+                btnGir.FlatAppearance.BorderSize = 0;
+                btnSonra.FlatAppearance.BorderSize = 0;
+
+                pnlBtn.Controls.Add(btnSonra); pnlBtn.Controls.Add(btnGir);
+                frmPrj.Controls.Add(pnlBtn);
+                frmPrj.Controls.Add(txtPrj);
+                frmPrj.Controls.Add(lblAcik);
+
+                frmPrj.AcceptButton = btnGir;
+                frmPrj.CancelButton = btnSonra;
+                frmPrj.Shown += (s, ea) => { try { txtPrj.Focus(); txtPrj.SelectAll(); } catch { } };
+
+                var sonuc = frmPrj.ShowDialog(this);
+                if (sonuc == DialogResult.OK)
+                {
+                    if (string.IsNullOrWhiteSpace(txtPrj.Text))
+                    {
+                        MessageBox.Show("Proje No boş olamaz!", "Uyarı",
+                            MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return false;
+                    }
+                    _projeNo = txtPrj.Text.Trim();
+                    return true;
+                }
+                else
+                {
+                    _projeNo = "";
+                    return false;
+                }
+            }
+        }
 
         private bool DosyaVarMi(string yol)
         { foreach (DataGridViewRow r in dgvDosyalar.Rows) if (r.Cells["colDosyaYolu"].Value?.ToString() == yol) return true; return false; }
@@ -863,43 +976,24 @@ namespace BaranYardimci
             finally { Cursor.Current = Cursors.Default; }
         }
 
-        // ── ERP AKTARİM ───────────────────────────────────────────────────
-        private void btnErpAktarim_Click(object sender, EventArgs e)
+           private void btnErpAktarim_Click(object sender, EventArgs e)
         {
             if (_tumVeriler.Count == 0) { MessageBox.Show("Veri yok!"); return; }
             dgvDosyalar.EndEdit();
 
-            // ── Proje No Dialog ───────────────────────────────────────────
-            using (var frmPrj = new Form())
+            // Proje no yoksa sor
+            if (string.IsNullOrEmpty(_projeNo))
             {
-                frmPrj.Text = "Proje Numarası";
-                frmPrj.Size = new Size(500, 210);
-                frmPrj.StartPosition = FormStartPosition.CenterParent;
-                frmPrj.FormBorderStyle = FormBorderStyle.FixedDialog;
-                frmPrj.MaximizeBox = false; frmPrj.MinimizeBox = false;
-                frmPrj.BackColor = Color.FromArgb(245, 245, 250);
-
-                var lblAcik = new Label { Text = "Proje numarasını şimdi girmek ister misiniz?", Dock = DockStyle.Top, Height = 42, Font = new Font("Segoe UI", 10f), TextAlign = ContentAlignment.MiddleCenter };
-                var txtPrj = new TextBox { Dock = DockStyle.Top, Height = 40, Font = new Font("Segoe UI", 13f), Text = _projeNo };
-                var pnlBtn = new Panel { Dock = DockStyle.Bottom, Height = 56 };
-                var btnGir = new Button { Text = "✔  Proje No Gir", DialogResult = DialogResult.OK, Dock = DockStyle.Left, Width = 180, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(0, 122, 180), ForeColor = Color.White, Font = new Font("Segoe UI", 10f, FontStyle.Bold) };
-                var btnSonra = new Button { Text = "⏭  Daha Sonra Gireceğim", DialogResult = DialogResult.Ignore, Dock = DockStyle.Right, Width = 200, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(90, 90, 105), ForeColor = Color.White, Font = new Font("Segoe UI", 10f, FontStyle.Bold) };
-                btnGir.FlatAppearance.BorderSize = 0; btnSonra.FlatAppearance.BorderSize = 0;
-                pnlBtn.Controls.Add(btnSonra); pnlBtn.Controls.Add(btnGir);
-                frmPrj.Controls.Add(pnlBtn); frmPrj.Controls.Add(txtPrj); frmPrj.Controls.Add(lblAcik);
-                frmPrj.AcceptButton = btnGir;
-                frmPrj.CancelButton = btnSonra;
-                frmPrj.Shown += (s, ea) => { try { txtPrj.Focus(); txtPrj.SelectAll(); } catch { } };
-
-                var sonuc = frmPrj.ShowDialog(this);
-                if (sonuc == DialogResult.OK)
+                if (!ProjeNoSor(acilis: false))
                 {
-                    if (string.IsNullOrWhiteSpace(txtPrj.Text))
-                    { MessageBox.Show("Proje No boş olamaz!", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
-                    _projeNo = txtPrj.Text.Trim();
+                    MessageBox.Show("Proje numarası girilmeden ERP aktarımı yapılamaz.",
+                        "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
                 }
-                else _projeNo = "";
+                GosterProjeNoBaslikta();
             }
+
+            // ... buradan sonrası aynı (var sm = SM(); var ozet = Ozet(sm); ...)
 
             var sm = SM();
             var ozet = Ozet(sm);
