@@ -428,7 +428,6 @@ namespace BaranYardimci
                 e.CellStyle.ForeColor = fg;
                 e.CellStyle.SelectionBackColor = selBg;
                 e.CellStyle.SelectionForeColor = selFg;
-                e.FormattingApplied = true;
             }
             catch
             {
@@ -758,44 +757,50 @@ namespace BaranYardimci
         {
             var ofd = new OpenFileDialog { Filter = "Rapor|*.DOC;*.TXT;*.RPT|Hepsi|*.*", Multiselect = true };
             if (ofd.ShowDialog() != DialogResult.OK) return;
+
             int ok = 0, top = 0;
+
             foreach (string yol in ofd.FileNames)
             {
                 if (DosyaVarMi(yol)) continue;
                 string ad = Path.GetFileName(yol);
                 int n = DosyaOku(yol, ad);
-                if (n > 0)
+                if (n <= 0) { MessageBox.Show("Okunamadi: " + ad); continue; }
+
+                int idx = dgvDosyalar.Rows.Add(ad, "1", yol, "Yüklendi");
+
+                // ── YENİ SATIRI HEMEN KIRMIZIYA ZORLA ──
+                try
                 {
-                    int idx = dgvDosyalar.Rows.Add(ad, "1", yol, "Yüklendi");
-                    // YENİ SATIRIN ESKİ STYLE CACHE'İNİ ANINDA TEMİZLE
-                    try
+                    var yeni = dgvDosyalar.Rows[idx];
+                    var kirmizi = new DataGridViewCellStyle
                     {
-                        dgvDosyalar.Rows[idx].DefaultCellStyle = new DataGridViewCellStyle();
-                        dgvDosyalar.InvalidateRow(idx);
-                    }
-                    catch { }
-                    ok++; top += n;
+                        BackColor = Color.FromArgb(255, 200, 200),
+                        ForeColor = Color.FromArgb(120, 0, 0),
+                        SelectionBackColor = Color.FromArgb(220, 160, 160),
+                        SelectionForeColor = Color.FromArgb(80, 0, 0)
+                    };
+                    yeni.DefaultCellStyle = kirmizi;
+                    foreach (DataGridViewCell c in yeni.Cells)
+                        c.Style = kirmizi;
+                    dgvDosyalar.InvalidateRow(idx);
                 }
-                else MessageBox.Show("Okunamadi: " + ad);
+                catch { }
+
+                ok++; top += n;
             }
 
             if (ok > 0)
             {
-                try
-                {
-                    foreach (DataGridViewRow row in dgvDosyalar.Rows)
-                    {
-                        if (row == null || row.IsNewRow) continue;
-                        row.DefaultCellStyle = new DataGridViewCellStyle();
-                    }
-                    dgvDosyalar.Invalidate();
-                }
-                catch { }
+                // Tüm satırları yeniden çiz
+                dgvDosyalar.Invalidate();
+                Application.DoEvents();
 
                 DurumGuncelle();
                 MessageBox.Show(
                     $"✅  {ok} dosya yüklendi, {top} parça okundu.\n\n" +
-                    "Sipariş adedini girip  💾 Miktar Kaydet  butonuna tıklayınız.",
+                    "Lütfen önce bu üründen kaç adet sipariş verildiğini giriniz\n" +
+                    "ve sonrasında  💾 Miktar Kaydet  butonuna tıklayınız.",
                     "Dosya Yüklendi", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
