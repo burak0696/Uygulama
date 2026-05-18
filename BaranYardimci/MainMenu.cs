@@ -142,7 +142,7 @@ namespace BARAN
 
         // ── Buton tıklamaları ──────────────────────────────────────────
         private void btnUrunAra_Click(object sender, EventArgs e)
-            => Bilgi("Ürün Arama modülü yakında aktif olacak.");
+            => Ac(() => new UrunAra(), "Ürün Kodlama");
 
         private void btnMusteri_Click(object sender, EventArgs e)
             => Bilgi("Müşteri Paneli modülü yakında aktif olacak.");

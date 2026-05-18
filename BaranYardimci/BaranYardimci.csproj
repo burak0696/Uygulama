@@ -516,6 +516,12 @@
     <Compile Include="Sarf.Designer.cs">
       <DependentUpon>Sarf.cs</DependentUpon>
     </Compile>
+    <Compile Include="UrunAra.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="UrunAra.Designer.cs">
+      <DependentUpon>UrunAra.cs</DependentUpon>
+    </Compile>
     <Compile Include="UrunDetayFormu.cs">
       <SubType>Form</SubType>
     </Compile>
