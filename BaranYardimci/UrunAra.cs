@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
 using System.Drawing;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
 
@@ -10,14 +11,26 @@ namespace BaranYardimci
 {
     public partial class UrunAra : Form
     {
-        private bool _yukleniyor = false;   // ComboBox event'lerini blokla
+        // ── Kategori hiyerarşisi (DB kolon adları, sırayla) ──────────
+        private static readonly string[] Seviyeler = new[]
+        {
+            "Design", "Sector", "ProductType", "StructureType",
+            "VoltageAyak", "Foundation", "Tower"
+        };
+        private static readonly string[] SeviyeAdlari = new[]
+        {
+            "Tasarım", "Sektör", "Ürün Tipi", "Yapı Tipi",
+            "Voltaj/Ayak", "Temel", "Kule"
+        };
+
+        private const string PLACEHOLDER = "🔍 Ağaçta filtrele...";
 
         public UrunAra()
         {
             InitializeComponent();
             AttachEvents();
-            LoadInitialDesigns();
-            DurumYaz("Hazır.  Filtre seçin veya hızlı arama yapın.", Color.FromArgb(180, 200, 180));
+            AgacYukle();
+            DurumYaz("Hazır. Soldan kategori seçin.", Color.FromArgb(180, 200, 180));
         }
 
         // ════════════════════════════════════════════════════════════
@@ -25,188 +38,393 @@ namespace BaranYardimci
         // ════════════════════════════════════════════════════════════
         private void AttachEvents()
         {
-            cmbDesign.SelectedIndexChanged += (s, e) =>
+            tvKategori.AfterSelect += TvKategori_AfterSelect;
+            tvKategori.NodeMouseDoubleClick += (s, e) => YapragiAc(e.Node);
+            tvKategori.MouseDown += (s, e) =>
             {
-                if (_yukleniyor) return;
-                ClearLowerCombos(1);
-                FillComboBox(cmbSector, "Sector", "Design=@d", P("@d", cmbDesign.Text));
+                // Sağ tıkta o node'u seç
+                if (e.Button == MouseButtons.Right)
+                {
+                    var n = tvKategori.GetNodeAt(e.X, e.Y);
+                    if (n != null) tvKategori.SelectedNode = n;
+                }
             };
-            cmbSector.SelectedIndexChanged += (s, e) =>
+
+            ctxAgac.Opening += (s, e) =>
             {
-                if (_yukleniyor) return;
-                ClearLowerCombos(2);
-                FillComboBox(cmbProductType, "ProductType", "Design=@d AND Sector=@s",
-                    P("@d", cmbDesign.Text), P("@s", cmbSector.Text));
+                bool aktif = chkDuzenle.Checked && tvKategori.SelectedNode != null;
+                mnuYenidenAdlandir.Enabled = aktif;
+                mnuSil.Enabled = aktif;
+                if (!chkDuzenle.Checked)
+                {
+                    e.Cancel = true; // Düzenle modu kapalıysa menü açma
+                    DurumYaz("⚠ Önce 'Düzenle Modu'nu açın.", Color.FromArgb(255, 200, 100));
+                }
             };
-            cmbProductType.SelectedIndexChanged += (s, e) =>
+
+            mnuYenidenAdlandir.Click += (s, e) => YenidenAdlandir(tvKategori.SelectedNode);
+            mnuSil.Click += (s, e) => DugumSil(tvKategori.SelectedNode);
+            mnuYenile.Click += (s, e) => AgacYukle();
+
+            chkDuzenle.CheckedChanged += (s, e) =>
             {
-                if (_yukleniyor) return;
-                ClearLowerCombos(3);
-                FillComboBox(cmbStructureType, "StructureType",
-                    "Design=@d AND Sector=@s AND ProductType=@p",
-                    P("@d", cmbDesign.Text), P("@s", cmbSector.Text), P("@p", cmbProductType.Text));
+                if (chkDuzenle.Checked)
+                    DurumYaz("🔧 Düzenle modu AÇIK — sağ tık menü aktif, dikkatli olun.", Color.FromArgb(255, 210, 80));
+                else
+                    DurumYaz("👁 Görüntüleme modu.", Color.FromArgb(180, 200, 180));
             };
-            cmbStructureType.SelectedIndexChanged += (s, e) =>
+
+            // Ağaç filtresi (placeholder mantığı)
+            txtAgacFiltre.GotFocus += (s, e) =>
             {
-                if (_yukleniyor) return;
-                ClearLowerCombos(4);
-                FillComboBox(cmbVoltageAyak, "VoltageAyak",
-                    "Design=@d AND Sector=@s AND ProductType=@p AND StructureType=@st",
-                    P("@d", cmbDesign.Text), P("@s", cmbSector.Text),
-                    P("@p", cmbProductType.Text), P("@st", cmbStructureType.Text));
+                if (txtAgacFiltre.Text == PLACEHOLDER)
+                { txtAgacFiltre.Text = ""; txtAgacFiltre.ForeColor = Color.Black; }
             };
-            cmbVoltageAyak.SelectedIndexChanged += (s, e) =>
+            txtAgacFiltre.LostFocus += (s, e) =>
             {
-                if (_yukleniyor) return;
-                ClearLowerCombos(5);
-                FillComboBox(cmbFoundation, "Foundation",
-                    "Design=@d AND Sector=@s AND ProductType=@p AND StructureType=@st AND VoltageAyak=@v",
-                    P("@d", cmbDesign.Text), P("@s", cmbSector.Text),
-                    P("@p", cmbProductType.Text), P("@st", cmbStructureType.Text),
-                    P("@v", cmbVoltageAyak.Text));
+                if (string.IsNullOrWhiteSpace(txtAgacFiltre.Text))
+                { txtAgacFiltre.Text = PLACEHOLDER; txtAgacFiltre.ForeColor = Color.Gray; }
             };
-            cmbFoundation.SelectedIndexChanged += (s, e) =>
+            txtAgacFiltre.TextChanged += (s, e) =>
             {
-                if (_yukleniyor) return;
-                ClearLowerCombos(6);
-                FillComboBox(cmbTower, "Tower",
-                    "Design=@d AND Sector=@s AND ProductType=@p AND StructureType=@st AND VoltageAyak=@v AND Foundation=@f",
-                    P("@d", cmbDesign.Text), P("@s", cmbSector.Text),
-                    P("@p", cmbProductType.Text), P("@st", cmbStructureType.Text),
-                    P("@v", cmbVoltageAyak.Text), P("@f", cmbFoundation.Text));
+                if (txtAgacFiltre.Text == PLACEHOLDER) return;
+                AgacFiltrele(txtAgacFiltre.Text);
             };
 
             btnYeniUrun.Click += BtnYeniUrun_Click;
-            btnUrunGetir.Click += BtnUrunGetir_Click;
-            btnTemizle.Click += (s, e) => { ClearLowerCombos(0); dataGridView1.DataSource = null; lblKayitSayisi.Text = "📊 0 kayıt"; DurumYaz("Filtreler temizlendi.", Color.FromArgb(180, 200, 180)); };
-            btnTasarimSearch.Click += BtnTasarimSearch_Click;
+            btnDetay.Click += (s, e) => YapragiAc(tvKategori.SelectedNode);
+            btnYenile.Click += (s, e) => AgacYukle();
             btnKapat.Click += (s, e) => this.Close();
+            btnTasarimSearch.Click += BtnTasarimSearch_Click;
 
             txtTasarimSearch.KeyDown += (s, e) =>
             {
                 if (e.KeyCode == Keys.Enter)
                 {
                     BtnTasarimSearch_Click(s, EventArgs.Empty);
-                    e.Handled = true;
-                    e.SuppressKeyPress = true;
+                    e.Handled = true; e.SuppressKeyPress = true;
                 }
+            };
+
+            dataGridView1.CellDoubleClick += (s, e) =>
+            {
+                if (e.RowIndex < 0) return;
+                var row = dataGridView1.Rows[e.RowIndex];
+                // Bu satırdaki Tower'a karşılık gelen ağaç düğümünü bul ve aç
+                var path = Seviyeler.Select(k => row.Cells[k]?.Value?.ToString() ?? "").ToArray();
+                var node = DugumeGit(path);
+                if (node != null) { tvKategori.SelectedNode = node; YapragiAc(node); }
             };
         }
 
-        private static SqlParameter P(string name, object val) => new SqlParameter(name, val ?? DBNull.Value);
-
         // ════════════════════════════════════════════════════════════
-        //  COMBOBOX YÜKLEME
+        //  AĞAÇ YÜKLEME
         // ════════════════════════════════════════════════════════════
-        private void LoadInitialDesigns() => FillComboBox(cmbDesign, "Design", null);
-
-        private void FillComboBox(ComboBox combo, string column, string whereClause, params SqlParameter[] parameters)
-        {
-            _yukleniyor = true;
-            try
-            {
-                combo.Items.Clear();
-                string sql = $"SELECT DISTINCT [{column}] FROM dbo.Urun";
-                if (!string.IsNullOrWhiteSpace(whereClause)) sql += " WHERE " + whereClause;
-                sql += $" ORDER BY [{column}]";
-
-                var dt = DB.GetTable(sql, parameters);
-                foreach (DataRow r in dt.Rows)
-                {
-                    var v = r[0]?.ToString();
-                    if (!string.IsNullOrWhiteSpace(v)) combo.Items.Add(v);
-                }
-            }
-            catch (Exception ex)
-            {
-                DurumYaz("❌ Combo yükleme hatası: " + ex.Message, Color.FromArgb(255, 140, 140));
-            }
-            finally { _yukleniyor = false; }
-        }
-
-        private void ClearLowerCombos(int level)
-        {
-            _yukleniyor = true;
-            try
-            {
-                if (level <= 0) { cmbDesign.Items.Clear(); cmbDesign.Text = ""; LoadInitialDesigns(); }
-                if (level <= 1) { cmbSector.Items.Clear(); cmbSector.Text = ""; }
-                if (level <= 2) { cmbProductType.Items.Clear(); cmbProductType.Text = ""; }
-                if (level <= 3) { cmbStructureType.Items.Clear(); cmbStructureType.Text = ""; }
-                if (level <= 4) { cmbVoltageAyak.Items.Clear(); cmbVoltageAyak.Text = ""; }
-                if (level <= 5) { cmbFoundation.Items.Clear(); cmbFoundation.Text = ""; }
-                if (level <= 6) { cmbTower.Items.Clear(); cmbTower.Text = ""; }
-            }
-            finally { _yukleniyor = false; }
-        }
-
-        // ════════════════════════════════════════════════════════════
-        //  ÜRÜN GETİR  (kategori filtreli)
-        // ════════════════════════════════════════════════════════════
-        private void BtnUrunGetir_Click(object sender, EventArgs e)
+        private void AgacYukle()
         {
             Cursor.Current = Cursors.WaitCursor;
             try
             {
-                var whereParts = new List<string>();
-                var pars = new List<SqlParameter>();
+                tvKategori.Nodes.Clear();
+                tvKategori.BeginUpdate();
 
-                void Ekle(ComboBox c, string col, string parName)
+                string sql = "SELECT " + string.Join(",", Seviyeler.Select(k => "[" + k + "]"))
+                           + ", COUNT(*) AS Adet FROM dbo.Urun "
+                           + "GROUP BY " + string.Join(",", Seviyeler.Select(k => "[" + k + "]"))
+                           + " ORDER BY " + string.Join(",", Seviyeler.Select(k => "[" + k + "]"));
+
+                var dt = DB.GetTable(sql);
+
+                foreach (DataRow r in dt.Rows)
                 {
-                    if (!string.IsNullOrWhiteSpace(c.Text))
-                    { whereParts.Add($"{col}={parName}"); pars.Add(P(parName, c.Text)); }
+                    var path = Seviyeler.Select(k => (r[k]?.ToString() ?? "").Trim()).ToArray();
+                    int adet = Convert.ToInt32(r["Adet"]);
+                    DugumEkleVeyaBul(path, adet);
                 }
 
-                Ekle(cmbDesign, "Design", "@d");
-                Ekle(cmbSector, "Sector", "@s");
-                Ekle(cmbProductType, "ProductType", "@p");
-                Ekle(cmbStructureType, "StructureType", "@st");
-                Ekle(cmbVoltageAyak, "VoltageAyak", "@v");
-                Ekle(cmbFoundation, "Foundation", "@f");
-                Ekle(cmbTower, "Tower", "@t");
+                // Sayıları derle (her node'da alt yaprak sayısı)
+                foreach (TreeNode root in tvKategori.Nodes) ToplamGuncelle(root);
 
-                string sql = @"SELECT Design, Sector, ProductType, StructureType, VoltageAyak, Foundation, Tower, Height, Rev, Tasarim, UrunKodu
-                               FROM dbo.Urun";
-                if (whereParts.Count > 0) sql += " WHERE " + string.Join(" AND ", whereParts);
-                sql += " ORDER BY Design, Sector, ProductType, StructureType, VoltageAyak, Foundation, Tower";
+                tvKategori.EndUpdate();
 
-                var dt = DB.GetTable(sql, pars.ToArray());
-                BindGrid(dt);
+                int toplamUrun = dt.AsEnumerable().Sum(x => Convert.ToInt32(x["Adet"]));
+                int kategoriSayisi = ToplamDugumSay(tvKategori.Nodes);
+                lblKayitSayisi.Text = $"📊 {toplamUrun} ürün · {kategoriSayisi} kategori düğümü";
 
-                if (dt.Rows.Count > 0)
-                {
-                    int last = dataGridView1.Rows.Count - 1;
-                    dataGridView1.ClearSelection();
-                    dataGridView1.Rows[last].Selected = true;
-                    dataGridView1.FirstDisplayedScrollingRowIndex = last;
-                    DurumYaz($"✅ {dt.Rows.Count} kayıt bulundu.", Color.FromArgb(140, 240, 160));
-                }
-                else
-                {
-                    DurumYaz("⚠ Filtreye uyan kayıt bulunamadı.", Color.FromArgb(255, 200, 100));
-                }
+                DurumYaz($"✅ Ağaç yüklendi — {dt.Rows.Count} yaprak.", Color.FromArgb(140, 240, 160));
             }
             catch (Exception ex)
             {
-                DurumYaz("❌ Hata: " + ex.Message, Color.FromArgb(255, 140, 140));
-                MessageBox.Show("Veri çekilemedi:\n" + ex.Message, "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                DurumYaz("❌ Ağaç yüklenemedi: " + ex.Message, Color.FromArgb(255, 140, 140));
+                MessageBox.Show("Ağaç yüklenemedi:\n" + ex.Message, "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally { Cursor.Current = Cursors.Default; }
         }
 
+        private int ToplamDugumSay(TreeNodeCollection nodes)
+        {
+            int n = 0;
+            foreach (TreeNode tn in nodes) { n++; n += ToplamDugumSay(tn.Nodes); }
+            return n;
+        }
+
+        /// <summary>Verilen path'i ağaca ekler veya mevcut yaprağı günceller.</summary>
+        private TreeNode DugumEkleVeyaBul(string[] path, int yaprakAdet)
+        {
+            TreeNodeCollection current = tvKategori.Nodes;
+            TreeNode son = null;
+            for (int i = 0; i < path.Length; i++)
+            {
+                string ad = string.IsNullOrEmpty(path[i]) ? "(boş)" : path[i];
+                TreeNode bulundu = null;
+                foreach (TreeNode t in current)
+                    if (string.Equals(t.Name, ad, StringComparison.OrdinalIgnoreCase))
+                    { bulundu = t; break; }
+
+                if (bulundu == null)
+                {
+                    bulundu = new TreeNode(ad) { Name = ad };
+                    bulundu.Tag = new NodeBilgi
+                    {
+                        Seviye = i,
+                        Path = path.Take(i + 1).ToArray(),
+                        YaprakMi = (i == path.Length - 1),
+                        Adet = (i == path.Length - 1) ? yaprakAdet : 0
+                    };
+                    DugumStil(bulundu);
+                    current.Add(bulundu);
+                }
+                son = bulundu;
+                current = bulundu.Nodes;
+            }
+            return son;
+        }
+
+        private int ToplamGuncelle(TreeNode node)
+        {
+            var bilgi = (NodeBilgi)node.Tag;
+            int toplam = bilgi.Adet;
+            foreach (TreeNode c in node.Nodes) toplam += ToplamGuncelle(c);
+            bilgi.AltToplam = toplam;
+            // Görsel başlık
+            string ikon = bilgi.YaprakMi ? "📦" : "📁";
+            string sayi = bilgi.YaprakMi ? $" · {bilgi.Adet} vrn" : $" · {toplam}";
+            node.Text = $"{ikon}  {(node.Name == "(boş)" ? "(boş)" : node.Name)}{sayi}";
+            return toplam;
+        }
+
+        private void DugumStil(TreeNode n)
+        {
+            var b = (NodeBilgi)n.Tag;
+            if (b.YaprakMi)
+            {
+                n.ForeColor = Color.FromArgb(140, 70, 0);
+                n.NodeFont = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+            }
+            else
+            {
+                n.ForeColor = Color.FromArgb(30, 60, 110);
+            }
+        }
+
         // ════════════════════════════════════════════════════════════
-        //  HIZLI ARAMA  (Tasarım / Ürün Kodu)
+        //  AĞAÇ FİLTRESİ — basit, ad eşleşeni göster
+        // ════════════════════════════════════════════════════════════
+        private void AgacFiltrele(string aranan)
+        {
+            if (string.IsNullOrWhiteSpace(aranan)) { AgacYukle(); return; }
+            tvKategori.BeginUpdate();
+            tvKategori.CollapseAll();
+            foreach (TreeNode n in tvKategori.Nodes) FiltreUygula(n, aranan.ToLower());
+            tvKategori.EndUpdate();
+        }
+        private bool FiltreUygula(TreeNode n, string aranan)
+        {
+            bool benim = n.Name.ToLower().Contains(aranan);
+            bool altta = false;
+            foreach (TreeNode c in n.Nodes) altta |= FiltreUygula(c, aranan);
+            if (benim || altta) { n.Expand(); n.BackColor = benim ? Color.FromArgb(255, 250, 200) : Color.Empty; return true; }
+            n.BackColor = Color.FromArgb(245, 245, 245);
+            return false;
+        }
+
+        // ════════════════════════════════════════════════════════════
+        //  AĞAÇ SEÇİMİ → GRİD'E ÜRÜNLERİ DOLDUR
+        // ════════════════════════════════════════════════════════════
+        private void TvKategori_AfterSelect(object sender, TreeViewEventArgs e)
+        {
+            if (e.Node == null) return;
+            var b = (NodeBilgi)e.Node.Tag;
+            var whereParts = new List<string>();
+            var pars = new List<SqlParameter>();
+            for (int i = 0; i < b.Path.Length; i++)
+            {
+                whereParts.Add("[" + Seviyeler[i] + "]=@p" + i);
+                pars.Add(new SqlParameter("@p" + i, b.Path[i]));
+            }
+
+            string sql = "SELECT " + string.Join(",", Seviyeler.Select(k => "[" + k + "]"))
+                        + ", Height, Rev, Tasarim, UrunKodu FROM dbo.Urun WHERE "
+                        + string.Join(" AND ", whereParts)
+                        + " ORDER BY " + string.Join(",", Seviyeler.Select(k => "[" + k + "]"))
+                        + ", Height, Rev";
+
+            try
+            {
+                var dt = DB.GetTable(sql, pars.ToArray());
+                BindGrid(dt);
+                grpSag.Text = "📋  " + string.Join("  →  ", b.Path.Where(x => !string.IsNullOrEmpty(x)))
+                            + $"  ({dt.Rows.Count} ürün)";
+            }
+            catch (Exception ex)
+            {
+                DurumYaz("❌ " + ex.Message, Color.FromArgb(255, 140, 140));
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════
+        //  YAPRAK AÇ → FrmUrunDetay
+        // ════════════════════════════════════════════════════════════
+        private void YapragiAc(TreeNode node)
+        {
+            if (node == null) { MessageBox.Show("Önce ağaçtan bir düğüm seçin."); return; }
+            var b = (NodeBilgi)node.Tag;
+            if (!b.YaprakMi)
+            {
+                MessageBox.Show("Bu bir kategori dalı (📁).\nVaryantları görmek için yaprak (📦) düğüm seçin.",
+                    "Bilgi", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+            using (var frm = new FrmUrunDetay(b.Path))
+            {
+                frm.StartPosition = FormStartPosition.CenterParent;
+                if (frm.ShowDialog(this) == DialogResult.OK)
+                    AgacYukle(); // Değişiklik olduysa ağacı yenile
+            }
+        }
+
+        private TreeNode DugumeGit(string[] path)
+        {
+            TreeNodeCollection cur = tvKategori.Nodes;
+            TreeNode son = null;
+            foreach (var ad in path)
+            {
+                TreeNode bulundu = null;
+                foreach (TreeNode t in cur)
+                    if (string.Equals(t.Name, ad, StringComparison.OrdinalIgnoreCase))
+                    { bulundu = t; break; }
+                if (bulundu == null) return son;
+                son = bulundu; cur = bulundu.Nodes;
+            }
+            return son;
+        }
+
+        // ════════════════════════════════════════════════════════════
+        //  DÜZENLEME: YENİDEN ADLANDIR
+        // ════════════════════════════════════════════════════════════
+        private void YenidenAdlandir(TreeNode node)
+        {
+            if (node == null) return;
+            var b = (NodeBilgi)node.Tag;
+            string eski = b.Path[b.Seviye];
+            string kolon = Seviyeler[b.Seviye];
+
+            string yeni = MetinDialog($"'{SeviyeAdlari[b.Seviye]}' düğümünü yeniden adlandır:", eski);
+            if (string.IsNullOrWhiteSpace(yeni) || yeni == eski) return;
+
+            // WHERE: parent path tam eşleşmeli + bu seviye eski
+            var whereParts = new List<string>();
+            var pars = new List<SqlParameter>();
+            for (int i = 0; i < b.Seviye; i++)
+            {
+                whereParts.Add("[" + Seviyeler[i] + "]=@p" + i);
+                pars.Add(new SqlParameter("@p" + i, b.Path[i]));
+            }
+            whereParts.Add("[" + kolon + "]=@old");
+            pars.Add(new SqlParameter("@old", eski));
+            pars.Add(new SqlParameter("@new", yeni));
+
+            string sql = $"UPDATE dbo.Urun SET [{kolon}]=@new WHERE " + string.Join(" AND ", whereParts);
+
+            if (MessageBox.Show($"'{eski}' → '{yeni}'\n\nBu düğüme bağlı tüm ürünler güncellenecek.\nDevam edilsin mi?",
+                "Onay", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+
+            try
+            {
+                int n = DB.Execute(sql, pars.ToArray());
+                DurumYaz($"✅ {n} kayıt güncellendi.", Color.FromArgb(140, 240, 160));
+                AgacYukle();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Hata: " + ex.Message, "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════
+        //  DÜZENLEME: SİL
+        // ════════════════════════════════════════════════════════════
+        private void DugumSil(TreeNode node)
+        {
+            if (node == null) return;
+            var b = (NodeBilgi)node.Tag;
+            var whereParts = new List<string>();
+            var pars = new List<SqlParameter>();
+            for (int i = 0; i <= b.Seviye; i++)
+            {
+                whereParts.Add("[" + Seviyeler[i] + "]=@p" + i);
+                pars.Add(new SqlParameter("@p" + i, b.Path[i]));
+            }
+            string sql = "DELETE FROM dbo.Urun WHERE " + string.Join(" AND ", whereParts);
+
+            if (MessageBox.Show(
+                $"⚠ Bu düğüm ve TÜM alt ürünleri SİLİNECEK!\n\n" +
+                $"Yol: {string.Join(" → ", b.Path)}\n" +
+                $"Tahmini etkilenen kayıt: {b.AltToplam}\n\n" +
+                "Devam edilsin mi?",
+                "Tehlikeli İşlem", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
+
+            try
+            {
+                int n = DB.Execute(sql, pars.ToArray());
+                DurumYaz($"🗑 {n} kayıt silindi.", Color.FromArgb(255, 180, 100));
+                AgacYukle();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Hata: " + ex.Message, "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════
+        //  YENİ ÜRÜN — 7 kategori + Height/Rev/Tasarim
+        // ════════════════════════════════════════════════════════════
+        private void BtnYeniUrun_Click(object sender, EventArgs e)
+        {
+            // Seçili düğümün path'ini varsayılan olarak kullan
+            string[] varsayilan = new string[7];
+            if (tvKategori.SelectedNode != null)
+            {
+                var b = (NodeBilgi)tvKategori.SelectedNode.Tag;
+                for (int i = 0; i < b.Path.Length; i++) varsayilan[i] = b.Path[i];
+            }
+
+            using (var frm = new FrmYeniUrun(varsayilan))
+            {
+                frm.StartPosition = FormStartPosition.CenterParent;
+                if (frm.ShowDialog(this) == DialogResult.OK) AgacYukle();
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════
+        //  HIZLI ARAMA
         // ════════════════════════════════════════════════════════════
         private void BtnTasarimSearch_Click(object sender, EventArgs e)
         {
             string raw = txtTasarimSearch.Text ?? "";
-            string withHyphen = NormalizeRemoveSpaces(raw);
+            string withHyphen = Regex.Replace(raw.Trim(), @"\s+", "");
             if (string.IsNullOrWhiteSpace(withHyphen))
-            {
-                MessageBox.Show("Arama metni giriniz.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                txtTasarimSearch.Focus();
-                return;
-            }
+            { MessageBox.Show("Arama metni giriniz."); return; }
             string noHyphen = withHyphen.Replace("-", "");
 
             const string sql = @"
@@ -218,54 +436,38 @@ WHERE
     OR ISNULL(Tasarim , '')                                  = @withHyphen
     OR REPLACE(REPLACE(ISNULL(UrunKodu, ''), ' ', ''), '-', '') = @noHyphen
     OR ISNULL(UrunKodu, '')                                  = @withHyphen
-ORDER BY Design, Sector, ProductType, StructureType, VoltageAyak, Foundation, Tower;";
+ORDER BY Design, Sector, ProductType";
 
-            Cursor.Current = Cursors.WaitCursor;
             try
             {
                 var dt = DB.GetTable(sql,
                     new SqlParameter("@withHyphen", SqlDbType.NVarChar, 500) { Value = withHyphen },
                     new SqlParameter("@noHyphen", SqlDbType.NVarChar, 500) { Value = noHyphen });
-
                 BindGrid(dt);
                 if (dt.Rows.Count == 0)
-                {
-                    DurumYaz($"⚠ '{raw}' için eşleşme yok.", Color.FromArgb(255, 200, 100));
-                    MessageBox.Show("Eşleşen kayıt bulunamadı.", "Bilgi", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
+                    DurumYaz($"⚠ '{raw}' bulunamadı.", Color.FromArgb(255, 200, 100));
                 else
-                {
-                    DurumYaz($"✅ '{raw}' → {dt.Rows.Count} eşleşme.", Color.FromArgb(140, 240, 160));
-                }
+                    DurumYaz($"✅ {dt.Rows.Count} eşleşme.", Color.FromArgb(140, 240, 160));
             }
-            catch (SqlException ex)
+            catch (Exception ex)
             {
-                DurumYaz("❌ SQL hatası: " + ex.Message, Color.FromArgb(255, 140, 140));
-                MessageBox.Show("SQL hatası:\n" + ex.Message, "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("SQL hatası: " + ex.Message, "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-            finally { Cursor.Current = Cursors.Default; }
-        }
-
-        private string NormalizeRemoveSpaces(string input)
-        {
-            if (string.IsNullOrWhiteSpace(input)) return string.Empty;
-            return Regex.Replace(input.Trim(), @"\s+", "");
         }
 
         // ════════════════════════════════════════════════════════════
-        //  GRID BINDING (ortak)
+        //  GRID
         // ════════════════════════════════════════════════════════════
         private void BindGrid(DataTable dt)
         {
             dataGridView1.DataSource = dt;
-
             var headers = new Dictionary<string, string>
             {
                 ["Design"] = "Tasarım",
                 ["Sector"] = "Sektör",
                 ["ProductType"] = "Ürün Tipi",
                 ["StructureType"] = "Yapı Tipi",
-                ["VoltageAyak"] = "Voltaj / Ayak",
+                ["VoltageAyak"] = "Voltaj/Ayak",
                 ["Foundation"] = "Temel",
                 ["Tower"] = "Kule",
                 ["Height"] = "Yükseklik",
@@ -277,224 +479,50 @@ ORDER BY Design, Sector, ProductType, StructureType, VoltageAyak, Foundation, To
                 if (dataGridView1.Columns[kv.Key] != null)
                     dataGridView1.Columns[kv.Key].HeaderText = kv.Value;
 
-            // UrunKodu sütununu vurgula
             if (dataGridView1.Columns["UrunKodu"] != null)
             {
                 dataGridView1.Columns["UrunKodu"].DefaultCellStyle.BackColor = Color.FromArgb(255, 250, 220);
                 dataGridView1.Columns["UrunKodu"].DefaultCellStyle.Font = new Font("Consolas", 9.5f, FontStyle.Bold);
-                dataGridView1.Columns["UrunKodu"].DefaultCellStyle.ForeColor = Color.FromArgb(100, 60, 0);
             }
-            if (dataGridView1.Columns["Tasarim"] != null)
-                dataGridView1.Columns["Tasarim"].DefaultCellStyle.Font = new Font("Consolas", 9.5f);
-
             dataGridView1.AutoResizeColumns();
-            lblKayitSayisi.Text = $"📊 {dt.Rows.Count} kayıt";
+            lblKayitSayisi.Text = $"📊 {dt.Rows.Count} ürün";
         }
 
         // ════════════════════════════════════════════════════════════
-        //  YENİ ÜRÜN
+        //  YARDIMCI: input dialog
         // ════════════════════════════════════════════════════════════
-        private void BtnYeniUrun_Click(object sender, EventArgs e)
+        public static string MetinDialog(string prompt, string defaultText = "")
         {
-            try
-            {
-                if (string.IsNullOrWhiteSpace(cmbDesign.Text) ||
-                    string.IsNullOrWhiteSpace(cmbSector.Text) ||
-                    string.IsNullOrWhiteSpace(cmbProductType.Text) ||
-                    string.IsNullOrWhiteSpace(cmbStructureType.Text) ||
-                    string.IsNullOrWhiteSpace(cmbVoltageAyak.Text) ||
-                    string.IsNullOrWhiteSpace(cmbFoundation.Text) ||
-                    string.IsNullOrWhiteSpace(cmbTower.Text))
-                {
-                    MessageBox.Show("Önce 7 kategoriyi de seçin\n(Tasarım → Sektör → ... → Kule).",
-                        "Eksik Seçim", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
-
-                // Tek diyalogda 3 alan
-                string height, rev, tasarim;
-                if (!YeniUrunDialog(out height, out rev, out tasarim)) return;
-
-                string urunKodu = GenerateUrunKodu(
-                    cmbDesign.Text, cmbSector.Text, cmbProductType.Text, cmbStructureType.Text,
-                    cmbVoltageAyak.Text, cmbFoundation.Text, cmbTower.Text, height, rev);
-
-                if (ExistsUrunKodu(urunKodu))
-                {
-                    MessageBox.Show("Aynı ürün kodu zaten kayıtlı:\n\n" + urunKodu,
-                        "Mükerrer Kayıt", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
-
-                const string insertSql = @"
-INSERT INTO dbo.Urun (Design, Sector, ProductType, StructureType, VoltageAyak, Foundation, Tower, Height, Rev, Tasarim, UrunKodu)
-VALUES (@d,@s,@p,@st,@v,@f,@t,@h,@r,@tas,@kod);";
-
-                int eff = DB.Execute(insertSql,
-                    P("@d", cmbDesign.Text), P("@s", cmbSector.Text),
-                    P("@p", cmbProductType.Text), P("@st", cmbStructureType.Text),
-                    P("@v", cmbVoltageAyak.Text), P("@f", cmbFoundation.Text),
-                    P("@t", cmbTower.Text), P("@h", height), P("@r", rev),
-                    P("@tas", tasarim), P("@kod", urunKodu));
-
-                if (eff > 0)
-                {
-                    ShowInsertedProduct(urunKodu);
-                    DurumYaz("✅ Ürün eklendi: " + urunKodu, Color.FromArgb(140, 240, 160));
-                    MessageBox.Show("✅ Yeni ürün eklendi.\n\nÜrün Kodu:\n" + urunKodu,
-                        "Başarılı", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
-                else
-                {
-                    MessageBox.Show("Ekleme başarısız.", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Hata: " + ex.Message, "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
-        private bool YeniUrunDialog(out string height, out string rev, out string tasarim)
-        {
-            height = rev = tasarim = "";
             using (var dlg = new Form())
             {
-                dlg.Text = "➕ Yeni Ürün Bilgileri";
-                dlg.Size = new Size(480, 320);
+                dlg.Text = "Giriş"; dlg.Size = new Size(440, 180);
                 dlg.StartPosition = FormStartPosition.CenterParent;
                 dlg.FormBorderStyle = FormBorderStyle.FixedDialog;
                 dlg.MaximizeBox = false; dlg.MinimizeBox = false;
                 dlg.BackColor = Color.FromArgb(245, 245, 250);
-
-                var lblInfo = new Label
-                {
-                    Text = "Seçili kategorilere ek olarak şu 3 alanı doldurun:",
-                    Dock = DockStyle.Top,
-                    Height = 36,
-                    Font = new Font("Segoe UI", 9.5f, FontStyle.Italic),
-                    ForeColor = Color.FromArgb(80, 80, 100),
-                    Padding = new Padding(14, 8, 0, 0)
-                };
-
-                Label LBL(string t, int y) => new Label
-                {
-                    Text = t,
-                    Location = new Point(14, y),
-                    AutoSize = true,
-                    Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
-                    ForeColor = Color.FromArgb(40, 60, 90)
-                };
-                TextBox TXT(int y) => new TextBox
-                {
-                    Location = new Point(140, y - 4),
-                    Size = new Size(300, 26),
-                    Font = new Font("Segoe UI", 10f),
-                    BorderStyle = BorderStyle.FixedSingle
-                };
-
-                var tH = TXT(60); var tR = TXT(100); var tT = TXT(140);
-                dlg.Controls.Add(LBL("Height (Yükseklik):", 64));
-                dlg.Controls.Add(LBL("Rev (Revizyon):", 104));
-                dlg.Controls.Add(LBL("Tasarım Kodu:", 144));
-                dlg.Controls.Add(tH); dlg.Controls.Add(tR); dlg.Controls.Add(tT);
-
-                var btnOk = new Button
-                {
-                    Text = "✔ Ekle",
-                    Size = new Size(140, 38),
-                    Location = new Point(150, 220),
-                    BackColor = Color.FromArgb(46, 139, 87),
-                    ForeColor = Color.White,
-                    FlatStyle = FlatStyle.Flat,
-                    Font = new Font("Segoe UI", 10f, FontStyle.Bold),
-                    DialogResult = DialogResult.OK
-                };
-                btnOk.FlatAppearance.BorderSize = 0;
-                var btnCancel = new Button
-                {
-                    Text = "✖ İptal",
-                    Size = new Size(140, 38),
-                    Location = new Point(300, 220),
-                    BackColor = Color.FromArgb(160, 60, 60),
-                    ForeColor = Color.White,
-                    FlatStyle = FlatStyle.Flat,
-                    Font = new Font("Segoe UI", 10f, FontStyle.Bold),
-                    DialogResult = DialogResult.Cancel
-                };
-                btnCancel.FlatAppearance.BorderSize = 0;
-
-                dlg.Controls.Add(btnOk);
-                dlg.Controls.Add(btnCancel);
-                dlg.Controls.Add(lblInfo);
-                dlg.AcceptButton = btnOk;
-                dlg.CancelButton = btnCancel;
-
-                if (dlg.ShowDialog(this) != DialogResult.OK) return false;
-
-                height = tH.Text?.Trim();
-                rev = tR.Text?.Trim();
-                tasarim = tT.Text?.Trim();
-
-                if (string.IsNullOrWhiteSpace(height) || string.IsNullOrWhiteSpace(rev) || string.IsNullOrWhiteSpace(tasarim))
-                {
-                    MessageBox.Show("Tüm alanları doldurun.", "Eksik Bilgi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return false;
-                }
-                return true;
+                var lbl = new Label { Text = prompt, Location = new Point(14, 14), AutoSize = true, Font = new Font("Segoe UI", 10F) };
+                var tx = new TextBox { Location = new Point(14, 50), Size = new Size(390, 28), Font = new Font("Segoe UI", 11F), Text = defaultText, BorderStyle = BorderStyle.FixedSingle };
+                var ok = new Button { Text = "✔ Tamam", Size = new Size(110, 36), Location = new Point(184, 90), BackColor = Color.FromArgb(46, 139, 87), ForeColor = Color.White, FlatStyle = FlatStyle.Flat, DialogResult = DialogResult.OK, Font = new Font("Segoe UI", 9.5F, FontStyle.Bold) };
+                var ip = new Button { Text = "✖ İptal", Size = new Size(110, 36), Location = new Point(298, 90), BackColor = Color.FromArgb(160, 60, 60), ForeColor = Color.White, FlatStyle = FlatStyle.Flat, DialogResult = DialogResult.Cancel, Font = new Font("Segoe UI", 9.5F, FontStyle.Bold) };
+                ok.FlatAppearance.BorderSize = 0; ip.FlatAppearance.BorderSize = 0;
+                dlg.Controls.AddRange(new Control[] { lbl, tx, ok, ip });
+                dlg.AcceptButton = ok; dlg.CancelButton = ip;
+                tx.SelectAll();
+                return dlg.ShowDialog() == DialogResult.OK ? tx.Text?.Trim() : null;
             }
         }
 
-        private string GenerateUrunKodu(params string[] parts)
-        {
-            string Clean(string s)
-            {
-                if (string.IsNullOrWhiteSpace(s)) return "NA";
-                s = Regex.Replace(s.Trim(), @"\s+", " ").Replace("-", "_");
-                return s;
-            }
-            var temiz = new List<string>();
-            foreach (var p in parts) temiz.Add(Clean(p));
-            return string.Join("-", temiz);
-        }
+        private void DurumYaz(string m, Color c)
+        { try { lblStatus.Text = m; lblStatus.ForeColor = c; } catch { } }
 
-        private bool ExistsUrunKodu(string urunKodu)
+        // ── Tag class ────────────────────────────────────────────────
+        private class NodeBilgi
         {
-            if (string.IsNullOrWhiteSpace(urunKodu)) return false;
-            try
-            {
-                var res = DB.GetValue("SELECT COUNT(1) FROM dbo.Urun WHERE UrunKodu = @kod",
-                    new SqlParameter("@kod", SqlDbType.NVarChar, 500) { Value = urunKodu });
-                if (res == null || res == DBNull.Value) return false;
-                return Convert.ToInt32(res) > 0;
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Kontrol hatası: " + ex.Message, "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return false;
-            }
-        }
-
-        private void ShowInsertedProduct(string urunKodu)
-        {
-            const string sql = @"SELECT Design, Sector, ProductType, StructureType, VoltageAyak, Foundation, Tower, Height, Rev, Tasarim, UrunKodu
-                                 FROM dbo.Urun WHERE UrunKodu = @kod";
-            var dt = DB.GetTable(sql, new SqlParameter("@kod", SqlDbType.NVarChar, 500) { Value = urunKodu });
-            BindGrid(dt);
-            if (dataGridView1.Rows.Count > 0)
-            {
-                dataGridView1.ClearSelection();
-                dataGridView1.Rows[0].Selected = true;
-            }
-        }
-
-        // ════════════════════════════════════════════════════════════
-        //  STATUS
-        // ════════════════════════════════════════════════════════════
-        private void DurumYaz(string msg, Color renk)
-        {
-            try { lblStatus.Text = msg; lblStatus.ForeColor = renk; }
-            catch { }
+            public int Seviye;
+            public string[] Path;
+            public bool YaprakMi;
+            public int Adet;
+            public int AltToplam;
         }
     }
 }

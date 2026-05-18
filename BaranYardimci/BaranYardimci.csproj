@@ -472,6 +472,9 @@
     <Compile Include="FrmTerminSec.Designer.cs">
       <DependentUpon>FrmTerminSec.cs</DependentUpon>
     </Compile>
+    <Compile Include="FrmUrunDetay.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="galvaniz.cs">
       <SubType>Form</SubType>
     </Compile>
