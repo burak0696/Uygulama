@@ -567,7 +567,7 @@ namespace BaranYardimci
                     .Count(r => _erpAktarimYapilan.Contains(r.Cells["colDosyaYolu"].Value?.ToString() ?? ""));
 
                 if (toplam == 0) Durum("📋", "Dosya yüklenmedi", Color.FromArgb(100, 100, 120), Color.FromArgb(230, 230, 235));
-                else if (aktarildi == 0) Durum("📂", $"{toplam} dosya yüklendi  —  ERP aktarımı bekleniyor", Color.FromArgb(140, 80, 0), Color.FromArgb(255, 243, 205));
+                else if (aktarildi == 0) Durum("📂", $"{toplam} dosya yüklendi  —  Excel Aktarımı bekleniyor", Color.FromArgb(140, 80, 0), Color.FromArgb(255, 243, 205));
                 else if (aktarildi < toplam) Durum("⚠", $"{aktarildi}/{toplam} dosya aktarıldı", Color.FromArgb(140, 80, 0), Color.FromArgb(255, 243, 205));
                 else if (_rotaKaydedilen.Count < aktarildi) Durum("✏", $"ERP aktarıldı  —  Rota girişi bekleniyor  ({_rotaKaydedilen.Count}/{aktarildi})", Color.FromArgb(0, 70, 160), Color.FromArgb(220, 235, 255));
                 else if (_civataEklendi.Count < aktarildi) Durum("🔩", "Rota kaydedildi  —  Civata listesi bekleniyor", Color.FromArgb(110, 55, 0), Color.FromArgb(255, 240, 210));
@@ -618,13 +618,13 @@ namespace BaranYardimci
             {
                 bg = Color.FromArgb(255, 243, 180); fg = Color.FromArgb(110, 80, 0);
                 selBg = Color.FromArgb(220, 180, 60); selFg = Color.FromArgb(60, 40, 0);
-                durumMetin = "🟡 ERP aktarıldı — rota bekleniyor";
+                durumMetin = "🟡 Excel aktarıldı — rota bekleniyor";
             }
             else
             {
                 bg = Color.FromArgb(255, 200, 200); fg = Color.FromArgb(120, 0, 0);
                 selBg = Color.FromArgb(210, 120, 120); selFg = Color.FromArgb(60, 0, 0);
-                durumMetin = "🔴 ERP aktarımı bekleniyor";
+                durumMetin = "🔴 Excel aktarımı bekleniyor";
             }
 
             var style = new DataGridViewCellStyle
@@ -673,7 +673,7 @@ namespace BaranYardimci
                 mnuCivataYukle.Enabled = aktarildi;
                 mnuCivataYukle.ForeColor = aktarildi ? Color.FromArgb(120, 55, 0) : Color.Gray;
                 mnuCivataYukle.Text = "🔩  Civata Listelerini Yükle"
-                    + (!aktarildi ? "  (önce ERP aktarımı yapın)" : civataDone ? "  ✅ zaten eklendi" : "");
+                    + (!aktarildi ? "  (önce ERP Exceli aktarımı yapın)" : civataDone ? "  ✅ zaten eklendi" : "");
             }
             catch { }
 
@@ -717,7 +717,7 @@ namespace BaranYardimci
             if (_sagKlikSatir < 0 || _sagKlikSatir >= dgvDosyalar.Rows.Count) return;
             string dosyaYolu = dgvDosyalar.Rows[_sagKlikSatir].Cells["colDosyaYolu"].Value?.ToString() ?? "";
             if (!_erpExcelYollari.ContainsKey(dosyaYolu))
-            { MessageBox.Show("Bu dosya için ERP Excel bulunamadı.\nÖnce ERP Aktarımı yapın.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+            { MessageBox.Show("Bu dosya için ERP Excel bulunamadı.\nÖnce Excel Aktarımı yapın.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
             string excelYol = _erpExcelYollari[dosyaYolu];
             if (!DosyaErisebilir(excelYol)) AgaBaglan();
             if (!DosyaErisebilir(excelYol)) { MessageBox.Show("Excel dosyasına erişilemiyor:\n" + excelYol, "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error); return; }
@@ -756,8 +756,8 @@ namespace BaranYardimci
                 }
                 if (bulunanYol != null)
                 {
-                    var cevap = MessageBox.Show($"ERP Excel bulundu:\n\n📄 {Path.GetFileName(bulunanYol)}\n\n[Evet] → Bu dosyayı kullan\n[Hayır] → Farklı dosya seç",
-                        "ERP Excel Bulundu", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
+                    var cevap = MessageBox.Show($"Excel bulundu:\n\n📄 {Path.GetFileName(bulunanYol)}\n\n[Evet] → Bu dosyayı kullan\n[Hayır] → Farklı dosya seç",
+                        "Excel Bulundu", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
                     if (cevap == DialogResult.Cancel) return;
                     erpExcel = cevap == DialogResult.Yes ? bulunanYol : KullanicidanExcelSec();
                     if (string.IsNullOrEmpty(erpExcel)) return;
@@ -765,7 +765,7 @@ namespace BaranYardimci
                 }
                 else
                 {
-                    if (MessageBox.Show("ERP Excel bulunamadı.\nKendiniz seçmek ister misiniz?",
+                    if (MessageBox.Show("Excel bulunamadı.\nKendiniz seçmek ister misiniz?",
                         "Dosya Bulunamadı", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
                     erpExcel = KullanicidanExcelSec();
                     if (string.IsNullOrEmpty(erpExcel)) return;
@@ -820,7 +820,7 @@ namespace BaranYardimci
         {
             if (_sagKlikSatir < 0 || _sagKlikSatir >= dgvDosyalar.Rows.Count) return;
             string dosyaYolu = dgvDosyalar.Rows[_sagKlikSatir].Cells["colDosyaYolu"].Value?.ToString() ?? "";
-            if (!_erpAktarimYapilan.Contains(dosyaYolu)) { MessageBox.Show("Önce ERP aktarımı yapılmalı.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+            if (!_erpAktarimYapilan.Contains(dosyaYolu)) { MessageBox.Show("Önce Excel aktarımı yapılmalı.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
             if (!_erpExcelYollari.ContainsKey(dosyaYolu)) { MessageBox.Show("Bu dosya için ERP Excel bulunamadı.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
 
             double siparisAdeti = N(dgvDosyalar.Rows[_sagKlikSatir].Cells["colSiparisAdeti"].Value);
