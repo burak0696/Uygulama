@@ -1155,7 +1155,7 @@ namespace BaranYardimci
             }
             catch (Exception ex) { MessageBox.Show("DB: " + ex.Message); return; }
 
-            // ── Eşleştirme (TÜM dosyalar için ortak — kullanıcıyı tek seferde sorar) ──
+            // ── Eşleştirme (TÜM dosyalar için ortak) ──
             var esles = new Dictionary<string, HammaddeItem>(StringComparer.OrdinalIgnoreCase);
             var bulunamadi = new List<BulunamadiItem>();
             var profilSatirlar = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
@@ -1163,10 +1163,10 @@ namespace BaranYardimci
             foreach (var v in _tumVeriler)
             {
                 string k2 = PG(v.ParcaProfil) + "|" + KD(v.Kalite);
-                double sip = sm.ContainsKey(v.DosyaId) ? sm[v.DosyaId] : 1;
-                double urt = sip * v.MontajAdeti * v.BirimAdet;
+                double sip0 = sm.ContainsKey(v.DosyaId) ? sm[v.DosyaId] : 1;
+                double urt0 = sip0 * v.MontajAdeti * v.BirimAdet;
                 if (!profilSatirlar.ContainsKey(k2)) profilSatirlar[k2] = new List<string>();
-                profilSatirlar[k2].Add($"► {v.DosyaAdi,-20}  {v.ParcaNo,-12}  Adet:{urt,8:0.##}  Boy:{v.Uzunluk,8:0.##}  Ağ:{urt * v.Agirlik,8:0.###} kg");
+                profilSatirlar[k2].Add($"► {v.DosyaAdi,-20}  {v.ParcaNo,-12}  Adet:{urt0,8:0.##}  Boy:{v.Uzunluk,8:0.##}  Ağ:{urt0 * v.Agirlik,8:0.###} kg");
             }
 
             foreach (var oz in ozet.Values)
@@ -1205,7 +1205,6 @@ namespace BaranYardimci
                 string dosyaAdi = dgvRow.Cells["colDosyaAdi"].Value?.ToString() ?? "";
                 if (string.IsNullOrEmpty(dosyaYolu)) continue;
 
-                // Bu dosyaya ait veriler
                 var docVeriler = _tumVeriler.Where(v => v.DosyaId == dosyaYolu).ToList();
                 if (docVeriler.Count == 0) { atlanan++; continue; }
 
@@ -1220,7 +1219,7 @@ namespace BaranYardimci
                     for (int i = 0; i < headers.Length; i++) Yaz(xa, 1, i + 1, headers[i]);
 
                     int excelRow = 2;
-                    var yazılanAnaPozlar = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    var yazilanAnaPozlar = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
                     foreach (var montajGroup in docVeriler.GroupBy(v => (v.MontajNo ?? "").Trim()).OrderBy(g => g.Key))
                     {
@@ -1228,13 +1227,14 @@ namespace BaranYardimci
                         bool hasMontaj = !string.IsNullOrWhiteSpace(montajNo);
                         bool tekParca = montajGroup.Count() == 1;
 
-                        if (hasMontaj && !tekParca && !yazılanAnaPozlar.Contains(montajNo))
+                        // ── KAYNAKLI MONTAJ BAŞLIK SATIRI ──
+                        if (hasMontaj && !tekParca && !yazilanAnaPozlar.Contains(montajNo))
                         {
-                            yazılanAnaPozlar.Add(montajNo);
+                            yazilanAnaPozlar.Add(montajNo);
                             double mAg = montajGroup.Sum(v => sip * v.MontajAdeti * v.BirimAdet * v.Agirlik);
                             Yaz(xa, excelRow, 1, projeNoKullan);
                             Yaz(xa, excelRow, 2, montajNo);
-                            Yaz(xa, excelRow, 3, montajNo);
+                            Yaz(xa, excelRow, 3, montajNo + " / (Kaynaklı Montaj)");
                             Yaz(xa, excelRow, 4, dosyaAdSiz);
                             Yaz(xa, excelRow, 5, Math.Round(montajGroup.First().MontajAdeti * sip, 2));
                             Yaz(xa, excelRow, 6, Math.Round(mAg, 2));
@@ -1245,22 +1245,29 @@ namespace BaranYardimci
                             excelRow++;
                         }
 
+                        // ── PARÇA SATIRLARI ──
                         foreach (var v in montajGroup.OrderBy(x => x.ParcaNo))
                         {
                             string anaPoz = (hasMontaj && !tekParca) ? montajNo : dosyaAdSiz;
                             string key = PG(v.ParcaProfil) + "|" + KD(v.Kalite);
                             bool e2 = esles.ContainsKey(key);
                             double urt = sip * v.MontajAdeti * v.BirimAdet;
+
+                            string pozNoTemiz = (v.ParcaNo ?? "").Trim();
+                            string hmAdi = e2 ? esles[key].Adi : PG(v.ParcaProfil);
+                            string kaliteTemiz = KD(v.Kalite ?? "");
+                            string pozAciklama = pozNoTemiz + " / (" + hmAdi + " " + kaliteTemiz + ")";
+
                             Yaz(xa, excelRow, 1, projeNoKullan);
-                            Yaz(xa, excelRow, 2, (v.ParcaNo ?? "").Trim());
-                            Yaz(xa, excelRow, 3, (v.ParcaNo ?? "").Trim());
+                            Yaz(xa, excelRow, 2, pozNoTemiz);
+                            Yaz(xa, excelRow, 3, pozAciklama);
                             Yaz(xa, excelRow, 4, anaPoz);
                             Yaz(xa, excelRow, 5, Math.Round(v.MontajAdeti * sip, 2));
                             Yaz(xa, excelRow, 6, Math.Round(urt * v.Agirlik, 2));
                             Yaz(xa, excelRow, 7, "Madde");
                             Yaz(xa, excelRow, 8, e2 ? esles[key].No : "");
                             Yaz(xa, excelRow, 9, Math.Round(urt, 2));
-                            Yaz(xa, excelRow, 10, 1);
+                            Yaz(xa, excelRow, 10, "");
                             excelRow++;
                         }
                     }
@@ -1269,7 +1276,7 @@ namespace BaranYardimci
                 if (!string.IsNullOrEmpty(kaydedilenYol))
                 {
                     _erpAktarimYapilan.Add(dosyaYolu);
-                    _erpExcelYollari[dosyaYolu] = kaydedilenYol;     // ← HER DOSYA KENDİ EXCEL'İNE
+                    _erpExcelYollari[dosyaYolu] = kaydedilenYol;
                     SatirRenklendir(dgvRow.Index);
                     sonKaydedilen = kaydedilenYol;
                     basarili++;
@@ -1285,12 +1292,14 @@ namespace BaranYardimci
             DurumGuncelle();
 
             MessageBox.Show(
-                $"📊 ERP Aktarım tamamlandı\n\n" +
-                $"✅ Başarılı: {basarili} dosya\n" +
-                (atlanan > 0 ? $"⚠ Atlanan/iptal: {atlanan} dosya\n" : "") +
-                $"\n📁 Son kayıt:\n{sonKaydedilen}",
+                "📊 ERP Aktarım tamamlandı\n\n" +
+                "✅ Başarılı: " + basarili + " dosya\n" +
+                (atlanan > 0 ? "⚠ Atlanan/iptal: " + atlanan + " dosya\n" : "") +
+                "\n📁 Son kayıt:\n" + sonKaydedilen,
                 "Tamam", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
+
+     
         // ── TÜM EXCEL OLUŞTUR ─────────────────────────────────────────────
         private void btnTumExcel_Click(object sender, EventArgs e)
         {
