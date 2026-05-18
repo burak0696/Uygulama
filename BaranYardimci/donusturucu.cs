@@ -88,7 +88,7 @@ namespace BaranYardimci
         private Button btnTumExcel;
         private Button btnSil;
         private Button _btnMalzemeOzet;
-
+        private Button _btnSatinAlim;
         public Donusturucu()
         {
             InitializeComponent();
@@ -237,6 +237,21 @@ namespace BaranYardimci
                 btnTumExcel.FlatAppearance.BorderSize = 0;
                 btnTumExcel.Click += btnTumExcel_Click;
                 pnlSonucButonlar.Controls.Add(btnTumExcel);
+                var btnSatinAlim = new Button
+                {
+                    Text = "🛒  Satın Alım + Kesim Planı",
+                    Size = new Size(220, 48),
+                    Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+                    FlatStyle = FlatStyle.Flat,
+                    BackColor = Color.FromArgb(180, 100, 0),
+                    ForeColor = Color.White,
+                    Cursor = Cursors.Hand,
+                    Anchor = AnchorStyles.Top | AnchorStyles.Right
+                };
+                btnSatinAlim.FlatAppearance.BorderSize = 0;
+                btnSatinAlim.Click += btnSatinAlim_Click;
+                pnlSonucButonlar.Controls.Add(btnSatinAlim);
+                this._btnSatinAlim = btnSatinAlim;
                 var btnMalzemeOzet = new Button
                 {
                     Text = "📊  Malzeme Özet",
@@ -425,6 +440,12 @@ namespace BaranYardimci
             {
                 rightX -= btnTumExcel.Width;
                 btnTumExcel.Location = new Point(rightX, 8);
+                rightX -= padding;
+            }
+            if (_btnSatinAlim != null)
+            {
+                rightX -= _btnSatinAlim.Width;
+                _btnSatinAlim.Location = new Point(rightX, 8);
                 rightX -= padding;
             }
             if (_btnMalzemeOzet != null)
@@ -1414,7 +1435,23 @@ namespace BaranYardimci
                 foreach (var v in _tumVeriler) { double sip = sm.ContainsKey(v.DosyaId) ? sm[v.DosyaId] : 1; Yaz(xa, r, 1, v.DosyaAdi); Yaz(xa, r, 2, sip); Yaz(xa, r, 3, v.MontajNo); Yaz(xa, r, 4, v.MontajAdeti); Yaz(xa, r, 5, v.ParcaNo); Yaz(xa, r, 6, v.ParcaProfil); Yaz(xa, r, 7, v.Kalite); Yaz(xa, r, 8, v.Uzunluk); Yaz(xa, r, 9, v.Agirlik); r++; }
             });
         }
+        private void btnSatinAlim_Click(object sender, EventArgs e)
+        {
+            if (_tumVeriler.Count == 0)
+            { MessageBox.Show("Önce dosya yükleyin!", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
 
+            // Önce Hesapla işini otomatik yap (kullanıcı unutmasın diye)
+            if (dgvSonuc.Rows.Count == 0)
+            {
+                dgvDosyalar.EndEdit();
+                dgvSonuc.Rows.Clear();
+                foreach (var item in Ozet(SM()).Values.OrderBy(x => x.Profil).ThenBy(x => x.Kalite))
+                    dgvSonuc.Rows.Add(item.Profil, item.Kalite, item.ToplamAdet, item.ToplamUzunluk, Math.Round(item.ToplamAgirlik, 2));
+            }
+
+            // Mevcut Excel üretimini çağır
+            btnMalzemeExcel_Click(sender, e);
+        }
         private void btnMalzemeExcel_Click(object sender, EventArgs e)
         {
             if (dgvSonuc.Rows.Count == 0) { MessageBox.Show("Önce HESAPLA butonuna bas."); return; }
