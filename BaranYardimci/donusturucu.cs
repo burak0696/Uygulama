@@ -1182,53 +1182,102 @@ namespace BaranYardimci
 
             if (string.IsNullOrEmpty(_projeNo))
             {
-                MessageBox.Show("Proje numarası girilmemiş!\n\nLütfen önce ERP Aktarım butonuna basarak proje numarasını giriniz.", "Proje Numarası Gerekli", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Proje numarası girilmemiş!\n\nÖnce ERP Aktarım yapın.",
+                    "Proje Numarası Gerekli", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            dgvDosyalar.EndEdit();
-            var sm = SM();
-            string ciktiAdi = _projeNo + "_TUM_DOSYALAR_" + DateTime.Now.ToString("yyyyMMdd_HHmm") + ".xlsx";
-
-            AcExcelVeKaydet(ciktiAdi, ws =>
+            // dgvDosyalar sırasına göre unique ERP Excel yollarını topla
+            var erpExcelSirali = new List<string>();
+            foreach (DataGridViewRow row in dgvDosyalar.Rows)
             {
-                string[] headers = { "Dosya", "Montaj No", "Montaj Adeti", "Parça No", "Profil", "Kalite", "Uzunluk (mm)", "Birim Ağırlık (kg)", "Sipariş Adeti", "Üretim Adeti", "Toplam Ağırlık (kg)" };
-                for (int i = 0; i < headers.Length; i++)
-                    S(ws, 1, i + 1, headers[i], bold: true, bg: RenkBaslik, fg: RenkBeyaz, center: true);
-                try { ((Excel.Range)ws.Rows[1]).RowHeight = 22; } catch { }
+                string dy = row.Cells["colDosyaYolu"].Value?.ToString() ?? "";
+                if (string.IsNullOrEmpty(dy)) continue;
+                if (!_erpExcelYollari.ContainsKey(dy)) continue;
+                string ex = _erpExcelYollari[dy];
+                if (string.IsNullOrEmpty(ex)) continue;
+                if (!erpExcelSirali.Contains(ex, StringComparer.OrdinalIgnoreCase))
+                    erpExcelSirali.Add(ex);
+            }
 
-                int row = 2, sNo = 0;
-                foreach (var docGroup in _tumVeriler.GroupBy(v => v.DosyaId).OrderBy(g => g.Key))
+            if (erpExcelSirali.Count == 0)
+            {
+                MessageBox.Show("Birleştirilecek ERP Excel bulunamadı!\n\nÖnce her dosya için ERP Aktarım yapın.",
+                    "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            AgaBaglan();
+            foreach (var p in erpExcelSirali)
+            {
+                if (!DosyaErisebilir(p))
                 {
-                    double sip = sm.ContainsKey(docGroup.Key) ? sm[docGroup.Key] : 1;
-                    string docAdi = docGroup.First().DosyaAdi;
-
-                    S(ws, row, 1, "📄  " + docAdi + "   —   Sipariş: " + sip + " adet", bold: true, bg: RenkMavi, fg: RenkBeyaz);
-                    try { ((Excel.Range)ws.Range[ws.Cells[row, 1], ws.Cells[row, 11]]).Merge(); } catch { }
-                    try { ((Excel.Range)ws.Rows[row]).RowHeight = 22; } catch { }
-                    row++;
-
-                    foreach (var v in docGroup.OrderBy(x => x.MontajNo).ThenBy(x => x.ParcaNo))
-                    {
-                        double urt = sip * v.MontajAdeti * v.BirimAdet;
-                        int rowBg = sNo % 2 == 0 ? RenkBeyaz : RenkGri;
-                        S(ws, row, 1, v.DosyaAdi, bg: rowBg);
-                        S(ws, row, 2, v.MontajNo, bg: rowBg);
-                        S(ws, row, 3, v.MontajAdeti, bg: rowBg);
-                        S(ws, row, 4, v.ParcaNo, bg: rowBg);
-                        S(ws, row, 5, PG(v.ParcaProfil), bg: rowBg);
-                        S(ws, row, 6, KD(v.Kalite), bg: rowBg);
-                        S(ws, row, 7, v.Uzunluk, bg: rowBg);
-                        S(ws, row, 8, v.Agirlik, bg: rowBg);
-                        S(ws, row, 9, sip, bg: rowBg);
-                        S(ws, row, 10, Math.Round(urt, 2), bg: rowBg);
-                        S(ws, row, 11, Math.Round(urt * v.Agirlik, 3), bg: rowBg);
-                        row++; sNo++;
-                    }
-                    row++;
+                    MessageBox.Show("Excel'e erişilemiyor:\n" + p + "\n\nDosya açıksa kapatın.",
+                        "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
                 }
-                try { int[] w = { 24, 14, 12, 14, 18, 10, 14, 16, 12, 13, 18 }; for (int i = 0; i < w.Length; i++) ((Excel.Range)ws.Columns[i + 1]).ColumnWidth = w[i]; } catch { }
+            }
+
+            string ciktiAdi = _projeNo + "_TUM_DOSYALAR.xlsx";
+
+            Cursor.Current = Cursors.WaitCursor;
+            AcExcelVeKaydet(ciktiAdi, hedefWs =>
+            {
+                // Başlıklar — ERP formatıyla aynı
+                string[] headers = { "Proje No", "Poz No", "Poz Açıklaması", "Ana Poz No", "Poz Miktar",
+                             "Poz Ağırlık", "Bileşen Türü", "Bileşen No", "Bileşen Miktar", "İşlem Sırası" };
+                for (int i = 0; i < headers.Length; i++)
+                    Yaz(hedefWs, 1, i + 1, headers[i]);
+
+                int hedefRow = 2;
+
+                Excel.Application app2 = null;
+                try
+                {
+                    app2 = new Excel.Application();
+                    app2.Visible = false;
+                    app2.DisplayAlerts = false;
+
+                    foreach (string kaynakYol in erpExcelSirali)
+                    {
+                        Excel.Workbook wb2 = null;
+                        try
+                        {
+                            wb2 = app2.Workbooks.Open(kaynakYol, false, true,
+                                Type.Missing, Type.Missing, Type.Missing, Type.Missing, Type.Missing, Type.Missing,
+                                Type.Missing, Type.Missing, Type.Missing, Type.Missing, Type.Missing, Type.Missing);
+                            var ws2 = (Excel.Worksheet)wb2.Worksheets[1];
+                            int lastRow = ws2.UsedRange.Rows.Count;
+
+                            // 1. satır başlık — 2. satırdan itibaren kopyala
+                            for (int r = 2; r <= lastRow; r++)
+                            {
+                                bool bosSatir = true;
+                                for (int c = 1; c <= 10; c++)
+                                {
+                                    var val = ((Excel.Range)ws2.Cells[r, c]).Value2;
+                                    if (val == null) continue;
+                                    string s = val.ToString().Trim();
+                                    if (string.IsNullOrEmpty(s)) continue;
+                                    bosSatir = false;
+                                    Yaz(hedefWs, hedefRow, c, val);
+                                }
+                                if (!bosSatir) hedefRow++;
+                            }
+                        }
+                        finally
+                        {
+                            try { if (wb2 != null) { wb2.Close(false); Marshal.ReleaseComObject(wb2); } } catch { }
+                        }
+                    }
+                }
+                finally
+                {
+                    try { if (app2 != null) { app2.Quit(); Marshal.ReleaseComObject(app2); } } catch { }
+                    GC.Collect(); GC.WaitForPendingFinalizers();
+                }
             });
+            Cursor.Current = Cursors.Default;
         }
 
         private void btnGalvanizEkran_Click(object sender, EventArgs e) => new GalvanizKontrol().Show();
