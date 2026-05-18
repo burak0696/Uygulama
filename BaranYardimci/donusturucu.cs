@@ -127,6 +127,8 @@ namespace BaranYardimci
                 e.Graphics.DrawLine(pen, rect.Left, rect.Bottom - 1, rect.Right - 1, rect.Bottom - 1);
             }
         }
+
+
         private void KontrolleriOlustur()
         {
             if (!dgvDosyalar.Columns.Contains("colDurum"))
@@ -273,6 +275,7 @@ namespace BaranYardimci
                 pnlSonucButonlar_Resize(pnlSonucButonlar, EventArgs.Empty);
             }
 
+
             if (ctxDosya == null) ctxDosya = new ContextMenuStrip { Font = new Font("Segoe UI", 10f) };
             ctxDosya.Items.Clear();
 
@@ -331,6 +334,87 @@ namespace BaranYardimci
             catch { }
             FavorileriListeyeYaz();
 
+        }
+        private void pnlSonucButonlar_Resize(object sender, EventArgs e)
+        {
+            if (pnlSonucButonlar == null) return;
+            int panelWidth = pnlSonucButonlar.ClientSize.Width;
+            const int pad = 8;
+            const int y = 8;
+
+            // ─── SOL TARAF (designer'daki butonlar) ─────────────────────
+            int leftX = pad;
+            if (btnSil != null && btnSil.Visible)
+            {
+                btnSil.Location = new Point(leftX, y);
+                leftX += btnSil.Width + pad;
+            }
+            try
+            {
+                if (btnHesapla != null && btnHesapla.Visible)
+                {
+                    btnHesapla.Location = new Point(leftX, y);
+                    leftX += btnHesapla.Width + pad;
+                }
+                if (btnMalzemeExcel != null && btnMalzemeExcel.Visible)
+                {
+                    btnMalzemeExcel.Location = new Point(leftX, y);
+                    leftX += btnMalzemeExcel.Width + pad;
+                }
+                if (btnErpAktarim != null && btnErpAktarim.Visible)
+                {
+                    btnErpAktarim.Location = new Point(leftX, y);
+                    leftX += btnErpAktarim.Width + pad;
+                }
+            }
+            catch { }
+
+            // ─── SAĞ TARAF (runtime butonları) ──────────────────────────
+            int rightX = panelWidth - pad;
+            if (btnTumExcel != null && btnTumExcel.Visible)
+            {
+                rightX -= btnTumExcel.Width;
+                btnTumExcel.Location = new Point(rightX, y);
+                rightX -= pad;
+            }
+            if (_btnSatinAlim != null && _btnSatinAlim.Visible)
+            {
+                rightX -= _btnSatinAlim.Width;
+                _btnSatinAlim.Location = new Point(rightX, y);
+                rightX -= pad;
+            }
+            if (_btnMalzemeOzet != null && _btnMalzemeOzet.Visible)
+            {
+                rightX -= _btnMalzemeOzet.Width;
+                _btnMalzemeOzet.Location = new Point(rightX, y);
+                rightX -= pad;
+            }
+            if (btnExceliAc != null && btnExceliAc.Visible)
+            {
+                rightX -= btnExceliAc.Width;
+                btnExceliAc.Location = new Point(rightX, y);
+                rightX -= pad;
+            }
+
+            // ─── ÇAKIŞMA → 2 satıra geç ─────────────────────────────────
+            if (leftX > rightX + pad)
+            {
+                pnlSonucButonlar.Height = 112;
+                int y2 = y + 52;
+                int rx = panelWidth - pad;
+                if (btnTumExcel != null && btnTumExcel.Visible)
+                { rx -= btnTumExcel.Width; btnTumExcel.Location = new Point(rx, y2); rx -= pad; }
+                if (_btnSatinAlim != null && _btnSatinAlim.Visible)
+                { rx -= _btnSatinAlim.Width; _btnSatinAlim.Location = new Point(rx, y2); rx -= pad; }
+                if (_btnMalzemeOzet != null && _btnMalzemeOzet.Visible)
+                { rx -= _btnMalzemeOzet.Width; _btnMalzemeOzet.Location = new Point(rx, y2); rx -= pad; }
+                if (btnExceliAc != null && btnExceliAc.Visible)
+                { rx -= btnExceliAc.Width; btnExceliAc.Location = new Point(rx, y2); rx -= pad; }
+            }
+            else if (pnlSonucButonlar.Height != 62)
+            {
+                pnlSonucButonlar.Height = 62;
+            }
         }
         private void timerSaat_Tick(object sender, EventArgs e)
         { try { lblBaslik.Text = "    BARAN ÇELİK  —  " + DateTime.Now.ToString("HH:mm:ss"); } catch { } }
