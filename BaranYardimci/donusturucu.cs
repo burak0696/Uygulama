@@ -296,30 +296,27 @@ namespace BaranYardimci
             }
 
             FavorileriYukle();
-            // ── Favoriler ListBox event bağla (designer atlanmış olabilir) ──
             try
             {
-                var lbFav = this.Controls.Find("lbFavoriler", true).FirstOrDefault() as ListBox;
-                if (lbFav != null)
+                if (lbFavoriler != null)
                 {
-                    lbFav.DoubleClick -= lbFavoriler_DoubleClick;
-                    lbFav.DoubleClick += lbFavoriler_DoubleClick;
-                    lbFav.KeyDown -= lbFavoriler_KeyDown;
-                    lbFav.KeyDown += lbFavoriler_KeyDown;
-                    lbFav.Font = new Font("Segoe UI", 9.5f);
-                    lbFav.IntegralHeight = false;
+                    lbFavoriler.DoubleClick -= lbFavoriler_DoubleClick;
+                    lbFavoriler.DoubleClick += lbFavoriler_DoubleClick;
+                    lbFavoriler.KeyDown -= lbFavoriler_KeyDown;
+                    lbFavoriler.KeyDown += lbFavoriler_KeyDown;
+                    lbFavoriler.Font = new Font("Segoe UI", 9.5f);
+                    lbFavoriler.IntegralHeight = false;
                 }
-                var lbGec = this.Controls.Find("lbGecmis", true).FirstOrDefault() as ListBox;
-                if (lbGec != null)
+                if (lbGecmis != null)
                 {
-                    lbGec.DoubleClick -= lbGecmis_DoubleClick;
-                    lbGec.DoubleClick += lbGecmis_DoubleClick;
+                    lbGecmis.DoubleClick -= lbGecmis_DoubleClick;
+                    lbGecmis.DoubleClick += lbGecmis_DoubleClick;
                 }
             }
             catch { }
             FavorileriListeyeYaz();
-        }
 
+        }
         private void timerSaat_Tick(object sender, EventArgs e)
         { try { lblBaslik.Text = "    BARAN ÇELİK  —  " + DateTime.Now.ToString("HH:mm:ss"); } catch { } }
 
@@ -373,15 +370,16 @@ namespace BaranYardimci
             FavorileriListeyeYaz();
             MessageBox.Show("⭐ Favorilere eklendi:\n" + Path.GetFileName(excel), "Tamam", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
-
         private void btnFavSil_Click(object sender, EventArgs e)
         {
             try
             {
-                var lb = this.Controls.Find("lbFavoriler", true).FirstOrDefault() as ListBox;
-                if (lb == null) return;
-                int sel = lb.SelectedIndex; if (sel < 0 || sel >= _favoriler.Count) return;
-                _favoriler.RemoveAt(sel); FavorileriKaydet(); FavorileriListeyeYaz();
+                if (lbFavoriler == null) return;
+                int sel = lbFavoriler.SelectedIndex;
+                if (sel < 0 || sel >= _favoriler.Count) return;
+                _favoriler.RemoveAt(sel);
+                FavorileriKaydet();
+                FavorileriListeyeYaz();
             }
             catch { }
         }
@@ -390,9 +388,8 @@ namespace BaranYardimci
         {
             try
             {
-                var lb = this.Controls.Find("lbGecmis", true).FirstOrDefault() as ListBox;
-                if (lb == null || lb.SelectedItem == null) return;
-                lb.Items.Remove(lb.SelectedItem);
+                if (lbGecmis == null || lbGecmis.SelectedItem == null) return;
+                lbGecmis.Items.Remove(lbGecmis.SelectedItem);
             }
             catch { }
         }
@@ -409,10 +406,10 @@ namespace BaranYardimci
         {
             try
             {
-                var lb = this.Controls.Find("lbFavoriler", true).FirstOrDefault() as ListBox;
-                if (lb == null) return;
-                lb.Items.Clear();
-                foreach (var f in _favoriler) lb.Items.Add("📊  " + Path.GetFileNameWithoutExtension(f));
+                if (lbFavoriler == null) return;
+                lbFavoriler.Items.Clear();
+                foreach (var f in _favoriler)
+                    lbFavoriler.Items.Add("📊  " + Path.GetFileNameWithoutExtension(f));
             }
             catch { }
         }
