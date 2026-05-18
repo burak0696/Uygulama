@@ -494,6 +494,7 @@
     <Compile Include="InputBox.Designer.cs">
       <DependentUpon>InputBox.cs</DependentUpon>
     </Compile>
+    <Compile Include="KesimOptimizer.cs" />
     <Compile Include="LogHelper.cs" />
     <Compile Include="MainMenu.cs">
       <SubType>Form</SubType>

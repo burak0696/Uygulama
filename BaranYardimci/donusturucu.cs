@@ -1454,10 +1454,12 @@ namespace BaranYardimci
         }
         private void btnMalzemeExcel_Click(object sender, EventArgs e)
         {
-            if (dgvSonuc.Rows.Count == 0) { MessageBox.Show("Önce HESAPLA butonuna bas."); return; }
+            if (_tumVeriler.Count == 0) { MessageBox.Show("Önce dosya yükleyin!"); return; }
             dgvDosyalar.EndEdit(); Cursor.Current = Cursors.WaitCursor;
             var sm = SM();
-            var dict = new Dictionary<string, List<KesimParcasi>>(StringComparer.OrdinalIgnoreCase);
+
+            // ── Parçaları profile göre grupla ────────────────────────────────
+            var dict = new Dictionary<string, List<KesilecekParca>>(StringComparer.OrdinalIgnoreCase);
             var kgPerM = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var v in _tumVeriler)
@@ -1465,46 +1467,209 @@ namespace BaranYardimci
                 if (v.Uzunluk <= 0) continue;
                 double sip = sm.ContainsKey(v.DosyaId) ? sm[v.DosyaId] : 1;
                 int adet = (int)Math.Round(sip * v.MontajAdeti * v.BirimAdet);
+                if (adet <= 0) continue;
                 string key = PG(v.ParcaProfil) + "||" + KD(v.Kalite);
-                if (!dict.ContainsKey(key)) dict[key] = new List<KesimParcasi>();
-                var mevcut = dict[key].FirstOrDefault(x => Math.Abs(x.Uzunluk - v.Uzunluk) < 1);
-                if (mevcut != null) mevcut.Adet += adet; else dict[key].Add(new KesimParcasi { ParcaNo = v.ParcaNo, Uzunluk = v.Uzunluk, Adet = adet });
-                if (v.Uzunluk > 0 && v.Agirlik > 0 && !kgPerM.ContainsKey(key)) kgPerM[key] = v.Agirlik / (v.Uzunluk / 1000.0);
+                if (!dict.ContainsKey(key)) dict[key] = new List<KesilecekParca>();
+                var mevcut = dict[key].FirstOrDefault(x => Math.Abs(x.Uzunluk - v.Uzunluk) < 1
+                                                         && x.ParcaNo == v.ParcaNo);
+                if (mevcut != null) mevcut.Adet += adet;
+                else dict[key].Add(new KesilecekParca
+                {
+                    ParcaNo = v.ParcaNo,
+                    Uzunluk = v.Uzunluk,
+                    Adet = adet,
+                    DosyaAdi = v.DosyaAdi,
+                    MontajNo = v.MontajNo
+                });
+                if (v.Uzunluk > 0 && v.Agirlik > 0 && !kgPerM.ContainsKey(key))
+                    kgPerM[key] = v.Agirlik / (v.Uzunluk / 1000.0);
             }
 
-            var sonuclar = new List<ProfilSonuc>();
+            // ── Optimizer'ı her profil için çalıştır ─────────────────────────
+            var ayar = new KesimAyarlari
+            {
+                StokBoylari = new double[] { 6000, 12000 },
+                KerfMm = 3.0,
+                MinKullanilabilirFireMm = 300,
+                Hedef = KesimHedefi.EnAzKg,
+                KarisikStokIzinli = true
+            };
+
+            var sonuclar = new List<ProfilKesimSonucu>();
             foreach (var kv in dict.OrderBy(x => x.Key))
             {
                 string[] pts = kv.Key.Split(new[] { "||" }, StringSplitOptions.None);
                 string profil = pts[0], kalite = pts.Length > 1 ? pts[1] : "";
                 double kgM = kgPerM.ContainsKey(kv.Key) ? kgPerM[kv.Key] : 0;
-                double netMetre = kv.Value.Sum(p => p.Uzunluk * p.Adet) / 1000.0;
-                double netKg = netMetre * kgM;
-                var b6 = FFD(kv.Value, 6000); var b12 = FFD(kv.Value, 12000);
-                double fp6 = b6.Count > 0 ? b6.Average(x => x.FirePct) : 0; double fp12 = b12.Count > 0 ? b12.Average(x => x.FirePct) : 0;
-                double enIyiFire = double.MaxValue; double enIyiBoy = 6000; List<StokBar> enIyiBarlar = b6;
-                foreach (double boy in STOK_ADAYLARI) { var bb = FFD(kv.Value, boy); double fp = bb.Count > 0 ? bb.Average(x => x.FirePct) : 0; if (fp < enIyiFire) { enIyiFire = fp; enIyiBoy = boy; enIyiBarlar = bb; } }
-                sonuclar.Add(new ProfilSonuc { Profil = profil, Kalite = kalite, KgPerMetre = kgM, ToplamNetMetre = netMetre, ToplamKg = netKg, Bar6Adet = b6.Count, Bar6ToplamMetre = b6.Count * 6, Bar6ToplamKg = b6.Count * 6 * kgM, Bar6FirePct = fp6, Bar12Adet = b12.Count, Bar12ToplamMetre = b12.Count * 12, Bar12ToplamKg = b12.Count * 12 * kgM, Bar12FirePct = fp12, OnerilenBoy = enIyiBoy, OnerilenAdet = enIyiBarlar.Count, OnerilenMetre = enIyiBarlar.Count * enIyiBoy / 1000.0, OnerilenKg = enIyiBarlar.Count * enIyiBoy / 1000.0 * kgM, OnerilenFirePct = enIyiFire, OnerilenBarlar = enIyiBarlar, OneriNot = "" });
+                sonuclar.Add(KesimOptimizer.Optimize(profil, kalite, kv.Value, kgM, ayar));
             }
 
+            // ── Excel'e yaz ─────────────────────────────────────────────────
             Excel.Application app = null; Excel.Workbook wb = null;
             try
             {
-                app = new Excel.Application(); app.Visible = false; app.DisplayAlerts = false; wb = app.Workbooks.Add(Type.Missing); Excel.Worksheet ws = (Excel.Worksheet)wb.Worksheets[1]; int row = 1;
-                S(ws, row, 1, "SATIN ALIM LİSTESİ  —  " + DateTime.Now.ToString("dd.MM.yyyy"), bold: true, bg: RenkBaslik, fg: RenkBeyaz, size: 13); H(ws, row, 18); row++;
-                string[] h1 = { "PROFİL", "KALİTE", "kg/m", "GEREKEN NET METRE", "GEREKEN NET KG", "6m BAR — ADET", "6m — TOPLAM METRE", "6m — TOPLAM KG", "6m FIRE %", "12m BAR — ADET", "12m — TOPLAM METRE", "12m — TOPLAM KG", "12m FIRE %", "ÖNERİLEN", "NOT" };
-                for (int i = 0; i < h1.Length; i++) S(ws, row, i + 1, h1[i], bold: true, bg: RenkMavi, fg: RenkBeyaz, center: true); H(ws, row, 20); row++; int sNo = 0;
-                foreach (var s in sonuclar) { int bg6 = s.Bar6FirePct > 20 ? RenkKirmizi : s.Bar6FirePct > 10 ? RenkSari : RenkYesil; int bg12 = s.Bar12FirePct > 20 ? RenkKirmizi : s.Bar12FirePct > 10 ? RenkSari : RenkYesil; int rowBg = sNo % 2 == 0 ? RenkBeyaz : RenkAcik; S(ws, row, 1, s.Profil, bg: rowBg); S(ws, row, 2, s.Kalite, bg: rowBg); S(ws, row, 3, s.KgPerMetre, bg: rowBg); S(ws, row, 4, Math.Round(s.ToplamNetMetre, 2), bg: rowBg); S(ws, row, 5, Math.Round(s.ToplamKg, 2), bg: rowBg); S(ws, row, 6, s.Bar6Adet, bg: rowBg); S(ws, row, 7, s.Bar6ToplamMetre, bg: rowBg); S(ws, row, 8, Math.Round(s.Bar6ToplamKg, 2), bg: rowBg); S(ws, row, 9, Math.Round(s.Bar6FirePct, 1), bg: bg6); S(ws, row, 10, s.Bar12Adet, bg: rowBg); S(ws, row, 11, s.Bar12ToplamMetre, bg: rowBg); S(ws, row, 12, Math.Round(s.Bar12ToplamKg, 2), bg: rowBg); S(ws, row, 13, Math.Round(s.Bar12FirePct, 1), bg: bg12); S(ws, row, 14, (s.OnerilenBoy / 1000.0) + " m  x  " + s.OnerilenAdet + " adet  =  " + Math.Round(s.OnerilenMetre, 1) + " m", bg: rowBg); S(ws, row, 15, s.OneriNot, bg: rowBg); row++; sNo++; }
-                try { int[] w = { 16, 10, 7, 16, 14, 14, 16, 14, 10, 14, 16, 14, 10, 28, 26 }; for (int i = 0; i < w.Length; i++) ((Excel.Range)ws.Columns[i + 1]).ColumnWidth = w[i]; } catch { }
-                row += 2; S(ws, row, 1, "KESİM PLANI", bold: true, bg: RenkBaslik, fg: RenkBeyaz, size: 12); H(ws, row, 22); row++;
-                string[] h2 = { "PROFİL", "KALİTE", "BAR BOYU", "BAR NO", "KULLANILAN (mm)", "FIRE (mm)", "FIRE %", "PARÇALAR" };
-                for (int i = 0; i < h2.Length; i++) S(ws, row, i + 1, h2[i], bold: true, bg: RenkMavi, fg: RenkBeyaz, center: true); try { ((Excel.Range)ws.Columns[8]).ColumnWidth = 70; } catch { }
-                H(ws, row, 20); row++; sNo = 0;
-                foreach (var s in sonuclar) { string boyStr = (s.OnerilenBoy / 1000.0).ToString("0.0") + " m"; foreach (var bar in s.OnerilenBarlar) { string pstr = string.Join("  |  ", bar.Dilimler.Select(d => d.ParcaNo + " (" + d.Uzunluk + "mm x " + d.Adet + ")")); int bgF = bar.FirePct > 20 ? RenkKirmizi : bar.FirePct > 10 ? RenkSari : RenkYesil; int rowBg = sNo % 2 == 0 ? RenkBeyaz : RenkAcik; S(ws, row, 1, s.Profil, bg: rowBg); S(ws, row, 2, s.Kalite, bg: rowBg); S(ws, row, 3, boyStr, bg: rowBg); S(ws, row, 4, bar.BarNo, bg: rowBg); S(ws, row, 5, Math.Round(bar.Kullanilan, 1), bg: rowBg); S(ws, row, 6, Math.Round(bar.Fire, 1), bg: rowBg); S(ws, row, 7, Math.Round(bar.FirePct, 1), bg: bgF); S(ws, row, 8, pstr, bg: rowBg); row++; sNo++; } }
+                app = new Excel.Application(); app.Visible = false; app.DisplayAlerts = false;
+                wb = app.Workbooks.Add(Type.Missing);
+
+                // ╔═══════════ SAYFA 1: SATIN ALIM ═══════════╗
+                var ws1 = (Excel.Worksheet)wb.Worksheets[1];
+                ws1.Name = "Satın Alım";
+                int row = 1;
+
+                S(ws1, row, 1, "SATIN ALIM LİSTESİ  —  " + DateTime.Now.ToString("dd.MM.yyyy") +
+                    (string.IsNullOrEmpty(_projeNo) ? "" : "  —  Proje: " + _projeNo),
+                    bold: true, bg: RenkBaslik, fg: RenkBeyaz, size: 13);
+                H(ws1, row, 22); row++;
+
+                string[] h1 = { "PROFİL", "KALİTE", "kg/m",
+                        "GEREKEN NET (m)", "GEREKEN NET (kg)", "PARÇA ADEDİ",
+                        "BAR DAĞILIMI", "SATIN ALIM (m)", "SATIN ALIM (kg)",
+                        "FİRE %", "KULL. FİRE (m)", "HURDA (m)", "VERİM %", "STRATEJİ" };
+                for (int i = 0; i < h1.Length; i++)
+                    S(ws1, row, i + 1, h1[i], bold: true, bg: RenkMavi, fg: RenkBeyaz, center: true);
+                H(ws1, row, 28); row++;
+
+                double topNetKg = 0, topAlimKg = 0, topFireKg = 0;
+                foreach (var s in sonuclar)
+                {
+                    int bgFire = s.FireYuzdesi > 20 ? RenkKirmizi : s.FireYuzdesi > 10 ? RenkSari : RenkYesil;
+                    S(ws1, row, 1, s.Profil);
+                    S(ws1, row, 2, s.Kalite, center: true);
+                    S(ws1, row, 3, Math.Round(s.KgPerMetre, 3), center: true);
+                    S(ws1, row, 4, Math.Round(s.GerekenNetMetre, 2), center: true);
+                    S(ws1, row, 5, Math.Round(s.GerekenNetKg, 2), bold: true, center: true);
+                    S(ws1, row, 6, s.ToplamParcaAdedi, center: true);
+                    S(ws1, row, 7, s.KisaOzet(), bold: true, bg: RenkAcik, center: true);
+                    S(ws1, row, 8, Math.Round(s.SatinAlimToplamMetre, 2), center: true);
+                    S(ws1, row, 9, Math.Round(s.SatinAlimToplamKg, 2), bold: true, bg: RenkAcik, center: true);
+                    S(ws1, row, 10, Math.Round(s.FireYuzdesi, 1), bold: true, bg: bgFire, center: true);
+                    S(ws1, row, 11, Math.Round(s.KullanilabilirFireMm / 1000.0, 2), center: true);
+                    S(ws1, row, 12, Math.Round(s.HurdaFireMm / 1000.0, 2), center: true);
+                    S(ws1, row, 13, Math.Round(s.VerimYuzdesi, 1), bold: true, bg: RenkYesil, center: true);
+                    S(ws1, row, 14, s.SecilenStrateji, center: true);
+                    topNetKg += s.GerekenNetKg;
+                    topAlimKg += s.SatinAlimToplamKg;
+                    topFireKg += s.ToplamFireKg;
+                    row++;
+                }
+
+                // Toplam satırı
+                row++;
+                S(ws1, row, 1, "TOPLAM", bold: true, bg: RenkBaslik, fg: RenkBeyaz);
+                S(ws1, row, 5, Math.Round(topNetKg, 2), bold: true, bg: RenkBaslik, fg: RenkBeyaz, center: true);
+                S(ws1, row, 9, Math.Round(topAlimKg, 2), bold: true, bg: RenkBaslik, fg: RenkBeyaz, center: true);
+                S(ws1, row, 13, topAlimKg > 0 ? Math.Round(topNetKg / topAlimKg * 100, 1) : 0,
+                    bold: true, bg: RenkBaslik, fg: RenkBeyaz, center: true);
+                H(ws1, row, 22);
+
+                try
+                {
+                    int[] w = { 18, 10, 8, 14, 14, 10, 22, 14, 14, 10, 14, 12, 10, 22 };
+                    for (int i = 0; i < w.Length; i++) ((Excel.Range)ws1.Columns[i + 1]).ColumnWidth = w[i];
+                }
+                catch { }
+                try { ws1.Application.ActiveWindow.SplitRow = 2; ws1.Application.ActiveWindow.FreezePanes = true; } catch { }
+
+                // ╔═══════════ SAYFA 2: KESİM PLANI ═══════════╗
+                var ws2 = (Excel.Worksheet)wb.Worksheets.Add(After: ws1);
+                ws2.Name = "Kesim Planı";
+                row = 1;
+                S(ws2, row, 1, "KESİM PLANI  —  Bar bar detay", bold: true, bg: RenkBaslik, fg: RenkBeyaz, size: 13);
+                H(ws2, row, 22); row++;
+
+                string[] h2 = { "PROFİL", "KALİTE", "BAR BOYU", "BAR NO",
+                        "KULLANILAN (mm)", "FIRE (mm)", "FIRE %", "FIRE TÜRÜ", "PARÇALAR" };
+                for (int i = 0; i < h2.Length; i++)
+                    S(ws2, row, i + 1, h2[i], bold: true, bg: RenkMavi, fg: RenkBeyaz, center: true);
+                H(ws2, row, 24); row++;
+
+                foreach (var s in sonuclar)
+                {
+                    foreach (var bar in s.SecilenBarlar)
+                    {
+                        bool kullanilabilir = bar.FireKullanilabilir(ayar.MinKullanilabilirFireMm);
+                        int bgFire = bar.FirePct > 20 ? RenkKirmizi : bar.FirePct > 10 ? RenkSari : RenkYesil;
+                        string parcalar = string.Join("  |  ",
+                            bar.Dilimler.GroupBy(d => new { d.ParcaNo, d.Uzunluk })
+                                        .Select(g => $"{g.Key.ParcaNo}({g.Key.Uzunluk:0}mm)×{g.Count()}"));
+
+                        S(ws2, row, 1, s.Profil);
+                        S(ws2, row, 2, s.Kalite, center: true);
+                        S(ws2, row, 3, (bar.StokBoyu / 1000.0).ToString("0.#") + " m", bold: true, center: true);
+                        S(ws2, row, 4, bar.BarNo, center: true);
+                        S(ws2, row, 5, Math.Round(bar.Kullanilan, 0), center: true);
+                        S(ws2, row, 6, Math.Round(bar.Fire, 0), center: true);
+                        S(ws2, row, 7, Math.Round(bar.FirePct, 1), bold: true, bg: bgFire, center: true);
+                        S(ws2, row, 8, kullanilabilir ? "♻ Kullanılabilir" : "🗑 Hurda",
+                            bg: kullanilabilir ? RenkYesil : RenkKirmizi, center: true);
+                        S(ws2, row, 9, parcalar);
+                        row++;
+                    }
+                    row++; // profil arası boşluk
+                }
+
+                try
+                {
+                    int[] w2 = { 18, 10, 10, 8, 14, 12, 10, 16, 80 };
+                    for (int i = 0; i < w2.Length; i++) ((Excel.Range)ws2.Columns[i + 1]).ColumnWidth = w2[i];
+                }
+                catch { }
+
+                // ╔═══════════ SAYFA 3: SENARYO KARŞILAŞTIRMA ═══════════╗
+                var ws3 = (Excel.Worksheet)wb.Worksheets.Add(After: ws2);
+                ws3.Name = "Senaryolar";
+                row = 1;
+                S(ws3, row, 1, "DENENMİŞ SENARYOLAR  —  ✔ işaretli olan seçildi",
+                    bold: true, bg: RenkBaslik, fg: RenkBeyaz, size: 12);
+                H(ws3, row, 22); row++;
+
+                string[] h3 = { "PROFİL", "KALİTE", "SENARYO",
+                        "TOPLAM kg", "FİRE %", "BAR ADEDİ", "KULL. FİRE (m)", "SEÇİLDİ" };
+                for (int i = 0; i < h3.Length; i++)
+                    S(ws3, row, i + 1, h3[i], bold: true, bg: RenkMavi, fg: RenkBeyaz, center: true);
+                H(ws3, row, 22); row++;
+
+                foreach (var s in sonuclar)
+                {
+                    foreach (var sen in s.TumSenaryolar)
+                    {
+                        int bg = sen.Secildi ? RenkYesil : 0;
+                        S(ws3, row, 1, s.Profil, bg: bg);
+                        S(ws3, row, 2, s.Kalite, bg: bg, center: true);
+                        S(ws3, row, 3, sen.Ad, bg: bg);
+                        S(ws3, row, 4, Math.Round(sen.ToplamKg, 2), bold: sen.Secildi, bg: bg, center: true);
+                        S(ws3, row, 5, Math.Round(sen.FireYuzdesi, 1), bg: bg, center: true);
+                        S(ws3, row, 6, sen.BarSayisi, bg: bg, center: true);
+                        S(ws3, row, 7, Math.Round(sen.KullanilabilirFireMm / 1000.0, 2), bg: bg, center: true);
+                        S(ws3, row, 8, sen.Secildi ? "✔ SEÇİLDİ" : "", bold: true, bg: bg, center: true);
+                        row++;
+                    }
+                    row++;
+                }
+                try
+                {
+                    int[] w3 = { 18, 10, 28, 14, 10, 12, 16, 14 };
+                    for (int i = 0; i < w3.Length; i++) ((Excel.Range)ws3.Columns[i + 1]).ColumnWidth = w3[i];
+                }
+                catch { }
+
+                // İlk sayfaya dön
+                ws1.Activate();
                 app.Visible = true;
             }
-            catch (Exception ex) { MessageBox.Show("Excel Hatasi: " + ex.Message); try { if (wb != null) wb.Close(false); } catch { } try { if (app != null) app.Quit(); } catch { } }
-            finally { try { if (wb != null) Marshal.ReleaseComObject(wb); } catch { } try { if (app != null) Marshal.ReleaseComObject(app); } catch { } GC.Collect(); GC.WaitForPendingFinalizers(); Cursor.Current = Cursors.Default; }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Excel Hatası: " + ex.Message);
+                try { if (wb != null) wb.Close(false); } catch { }
+                try { if (app != null) app.Quit(); } catch { }
+            }
+            finally
+            {
+                try { if (wb != null) Marshal.ReleaseComObject(wb); } catch { }
+                try { if (app != null) Marshal.ReleaseComObject(app); } catch { }
+                GC.Collect(); GC.WaitForPendingFinalizers();
+                Cursor.Current = Cursors.Default;
+            }
         }
 
         // ── YARDIMCILAR ───────────────────────────────────────────────────
