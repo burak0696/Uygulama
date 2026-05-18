@@ -1241,8 +1241,7 @@ namespace BaranYardimci
                             Yaz(xa, excelRow, 7, "Kaynak");
                             Yaz(xa, excelRow, 8, "Kaynaklama");
                             Yaz(xa, excelRow, 9, 1);
-                            Yaz(xa, excelRow, 10, "");
-                            excelRow++;
+                            Yaz(xa, excelRow, 10, 7); excelRow++;
                         }
 
                         // ── PARÇA SATIRLARI ──

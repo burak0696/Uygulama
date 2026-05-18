@@ -937,7 +937,7 @@ namespace BaranYardimci
                         ((Excel.Range)ws.Cells[yeniSatir, COL_BILTUR]).Value2 = "Kaynak";
                         ((Excel.Range)ws.Cells[yeniSatir, COL_BILNO]).Value2 = ROTA_BILESEN[rotaIdx];
                         ((Excel.Range)ws.Cells[yeniSatir, COL_BILMIKTAR]).Value2 = 1;
-                        ((Excel.Range)ws.Cells[yeniSatir, COL_ISLEMSIRA]).Value2 = 1;
+                        ((Excel.Range)ws.Cells[yeniSatir, COL_ISLEMSIRA]).Value2 = rotaIdx + 1;
                     }
                 }
 
