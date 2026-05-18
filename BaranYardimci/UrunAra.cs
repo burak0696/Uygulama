@@ -11,19 +11,13 @@ namespace BaranYardimci
 {
     public partial class UrunAra : Form
     {
-        // ── Kategori hiyerarşisi (DB kolon adları, sırayla) ──────────
-        private static readonly string[] Seviyeler = new[]
-        {
-            "Design", "Sector", "ProductType", "StructureType",
-            "VoltageAyak", "Foundation", "Tower"
-        };
-        private static readonly string[] SeviyeAdlari = new[]
-        {
-            "Tasarım", "Sektör", "Ürün Tipi", "Yapı Tipi",
-            "Voltaj/Ayak", "Temel", "Kule"
-        };
+        private static readonly string[] Seviyeler =
+            { "Design", "Sector", "ProductType", "StructureType", "VoltageAyak", "Foundation", "Tower" };
+        private static readonly string[] SeviyeAdlari =
+            { "Tasarım", "Sektör", "Ürün Tipi", "Yapı Tipi", "Voltaj/Ayak", "Temel", "Kule" };
 
         private const string PLACEHOLDER = "🔍 Ağaçta filtrele...";
+        private bool _duzenleModu = false;
 
         public UrunAra()
         {
@@ -39,10 +33,8 @@ namespace BaranYardimci
         private void AttachEvents()
         {
             tvKategori.AfterSelect += TvKategori_AfterSelect;
-            tvKategori.NodeMouseDoubleClick += (s, e) => YapragiAc(e.Node);
             tvKategori.MouseDown += (s, e) =>
             {
-                // Sağ tıkta o node'u seç
                 if (e.Button == MouseButtons.Right)
                 {
                     var n = tvKategori.GetNodeAt(e.X, e.Y);
@@ -52,29 +44,48 @@ namespace BaranYardimci
 
             ctxAgac.Opening += (s, e) =>
             {
-                bool aktif = chkDuzenle.Checked && tvKategori.SelectedNode != null;
-                mnuYenidenAdlandir.Enabled = aktif;
-                mnuSil.Enabled = aktif;
-                if (!chkDuzenle.Checked)
+                if (!_duzenleModu)
                 {
-                    e.Cancel = true; // Düzenle modu kapalıysa menü açma
-                    DurumYaz("⚠ Önce 'Düzenle Modu'nu açın.", Color.FromArgb(255, 200, 100));
+                    e.Cancel = true;
+                    DurumYaz("⚠ Önce 'Ağaç Şekillendir'i açın.", Color.FromArgb(255, 200, 100));
+                    return;
                 }
+                bool aktif = tvKategori.SelectedNode != null;
+                mnuYenidenAdlandir.Enabled = aktif;
+                mnuYeniAlt.Enabled = aktif;
             };
 
             mnuYenidenAdlandir.Click += (s, e) => YenidenAdlandir(tvKategori.SelectedNode);
-            mnuSil.Click += (s, e) => DugumSil(tvKategori.SelectedNode);
+            mnuYeniAlt.Click += (s, e) => DugumeAltEkle(tvKategori.SelectedNode);
             mnuYenile.Click += (s, e) => AgacYukle();
 
-            chkDuzenle.CheckedChanged += (s, e) =>
+            btnAgacSekillendir.Click += (s, e) =>
             {
-                if (chkDuzenle.Checked)
-                    DurumYaz("🔧 Düzenle modu AÇIK — sağ tık menü aktif, dikkatli olun.", Color.FromArgb(255, 210, 80));
+                _duzenleModu = !_duzenleModu;
+                if (_duzenleModu)
+                {
+                    btnAgacSekillendir.BackColor = Color.FromArgb(220, 60, 40);
+                    btnAgacSekillendir.Text = "🔒  ŞEKİLLENDİRMEYİ KAPAT";
+                    tvKategori.BackColor = Color.FromArgb(255, 252, 240);
+                    DurumYaz("🔧 Şekillendirme AÇIK — sağ tık menüsü aktif.", Color.FromArgb(255, 210, 80));
+                    MessageBox.Show(
+                        "🌲 AĞAÇ ŞEKİLLENDİR\n\n" +
+                        "Ağaçtaki herhangi bir düğüme SAĞ TIK ile:\n" +
+                        "• ✏ Yeniden adlandır\n" +
+                        "• ➕ Altına yeni düğüm/ürün ekle\n\n" +
+                        "Silme işlemi bu modda yapılmaz.",
+                        "Düzenleme Modu", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
                 else
+                {
+                    btnAgacSekillendir.BackColor = Color.FromArgb(180, 100, 0);
+                    btnAgacSekillendir.Text = "🌲  AĞAÇ ŞEKİLLENDİR  (Düzenle Modu)";
+                    tvKategori.BackColor = Color.White;
                     DurumYaz("👁 Görüntüleme modu.", Color.FromArgb(180, 200, 180));
+                }
             };
 
-            // Ağaç filtresi (placeholder mantığı)
+            // Ağaç filtre placeholder
             txtAgacFiltre.GotFocus += (s, e) =>
             {
                 if (txtAgacFiltre.Text == PLACEHOLDER)
@@ -92,7 +103,7 @@ namespace BaranYardimci
             };
 
             btnYeniUrun.Click += BtnYeniUrun_Click;
-            btnDetay.Click += (s, e) => YapragiAc(tvKategori.SelectedNode);
+            btnDetay.Click += (s, e) => SeciliyiVaryantOlarakAc();
             btnYenile.Click += (s, e) => AgacYukle();
             btnKapat.Click += (s, e) => this.Close();
             btnTasarimSearch.Click += BtnTasarimSearch_Click;
@@ -109,11 +120,7 @@ namespace BaranYardimci
             dataGridView1.CellDoubleClick += (s, e) =>
             {
                 if (e.RowIndex < 0) return;
-                var row = dataGridView1.Rows[e.RowIndex];
-                // Bu satırdaki Tower'a karşılık gelen ağaç düğümünü bul ve aç
-                var path = Seviyeler.Select(k => row.Cells[k]?.Value?.ToString() ?? "").ToArray();
-                var node = DugumeGit(path);
-                if (node != null) { tvKategori.SelectedNode = node; YapragiAc(node); }
+                SeciliyiVaryantOlarakAc();
             };
         }
 
@@ -134,45 +141,29 @@ namespace BaranYardimci
                            + " ORDER BY " + string.Join(",", Seviyeler.Select(k => "[" + k + "]"));
 
                 var dt = DB.GetTable(sql);
-
                 foreach (DataRow r in dt.Rows)
                 {
                     var path = Seviyeler.Select(k => (r[k]?.ToString() ?? "").Trim()).ToArray();
                     int adet = Convert.ToInt32(r["Adet"]);
-                    DugumEkleVeyaBul(path, adet);
+                    DugumEkle(path, adet);
                 }
-
-                // Sayıları derle (her node'da alt yaprak sayısı)
                 foreach (TreeNode root in tvKategori.Nodes) ToplamGuncelle(root);
-
                 tvKategori.EndUpdate();
 
                 int toplamUrun = dt.AsEnumerable().Sum(x => Convert.ToInt32(x["Adet"]));
-                int kategoriSayisi = ToplamDugumSay(tvKategori.Nodes);
-                lblKayitSayisi.Text = $"📊 {toplamUrun} ürün · {kategoriSayisi} kategori düğümü";
-
-                DurumYaz($"✅ Ağaç yüklendi — {dt.Rows.Count} yaprak.", Color.FromArgb(140, 240, 160));
+                DurumYaz($"✅ Ağaç yüklendi — {toplamUrun} ürün, {dt.Rows.Count} kule.", Color.FromArgb(140, 240, 160));
             }
             catch (Exception ex)
             {
-                DurumYaz("❌ Ağaç yüklenemedi: " + ex.Message, Color.FromArgb(255, 140, 140));
+                DurumYaz("❌ " + ex.Message, Color.FromArgb(255, 140, 140));
                 MessageBox.Show("Ağaç yüklenemedi:\n" + ex.Message, "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally { Cursor.Current = Cursors.Default; }
         }
 
-        private int ToplamDugumSay(TreeNodeCollection nodes)
-        {
-            int n = 0;
-            foreach (TreeNode tn in nodes) { n++; n += ToplamDugumSay(tn.Nodes); }
-            return n;
-        }
-
-        /// <summary>Verilen path'i ağaca ekler veya mevcut yaprağı günceller.</summary>
-        private TreeNode DugumEkleVeyaBul(string[] path, int yaprakAdet)
+        private void DugumEkle(string[] path, int yaprakAdet)
         {
             TreeNodeCollection current = tvKategori.Nodes;
-            TreeNode son = null;
             for (int i = 0; i < path.Length; i++)
             {
                 string ad = string.IsNullOrEmpty(path[i]) ? "(boş)" : path[i];
@@ -191,13 +182,15 @@ namespace BaranYardimci
                         YaprakMi = (i == path.Length - 1),
                         Adet = (i == path.Length - 1) ? yaprakAdet : 0
                     };
-                    DugumStil(bulundu);
+                    if (bulundu.Tag is NodeBilgi nb)
+                    {
+                        bulundu.ForeColor = nb.YaprakMi ? Color.FromArgb(140, 70, 0) : Color.FromArgb(30, 60, 110);
+                        if (nb.YaprakMi) bulundu.NodeFont = new Font("Segoe UI", 9.5f, FontStyle.Bold);
+                    }
                     current.Add(bulundu);
                 }
-                son = bulundu;
                 current = bulundu.Nodes;
             }
-            return son;
         }
 
         private int ToplamGuncelle(TreeNode node)
@@ -206,30 +199,12 @@ namespace BaranYardimci
             int toplam = bilgi.Adet;
             foreach (TreeNode c in node.Nodes) toplam += ToplamGuncelle(c);
             bilgi.AltToplam = toplam;
-            // Görsel başlık
             string ikon = bilgi.YaprakMi ? "📦" : "📁";
-            string sayi = bilgi.YaprakMi ? $" · {bilgi.Adet} vrn" : $" · {toplam}";
+            string sayi = bilgi.YaprakMi ? $"  ·  {bilgi.Adet} ürün" : $"  ·  {toplam}";
             node.Text = $"{ikon}  {(node.Name == "(boş)" ? "(boş)" : node.Name)}{sayi}";
             return toplam;
         }
 
-        private void DugumStil(TreeNode n)
-        {
-            var b = (NodeBilgi)n.Tag;
-            if (b.YaprakMi)
-            {
-                n.ForeColor = Color.FromArgb(140, 70, 0);
-                n.NodeFont = new Font("Segoe UI", 9.5f, FontStyle.Bold);
-            }
-            else
-            {
-                n.ForeColor = Color.FromArgb(30, 60, 110);
-            }
-        }
-
-        // ════════════════════════════════════════════════════════════
-        //  AĞAÇ FİLTRESİ — basit, ad eşleşeni göster
-        // ════════════════════════════════════════════════════════════
         private void AgacFiltrele(string aranan)
         {
             if (string.IsNullOrWhiteSpace(aranan)) { AgacYukle(); return; }
@@ -249,32 +224,45 @@ namespace BaranYardimci
         }
 
         // ════════════════════════════════════════════════════════════
-        //  AĞAÇ SEÇİMİ → GRİD'E ÜRÜNLERİ DOLDUR
+        //  AĞAÇ SEÇİMİ → GRİD (SADECE ANA ÜRÜNLER — Rev BOŞ olanlar)
         // ════════════════════════════════════════════════════════════
         private void TvKategori_AfterSelect(object sender, TreeViewEventArgs e)
         {
             if (e.Node == null) return;
             var b = (NodeBilgi)e.Node.Tag;
+
             var whereParts = new List<string>();
             var pars = new List<SqlParameter>();
             for (int i = 0; i < b.Path.Length; i++)
             {
-                whereParts.Add("[" + Seviyeler[i] + "]=@p" + i);
+                whereParts.Add("u.[" + Seviyeler[i] + "]=@p" + i);
                 pars.Add(new SqlParameter("@p" + i, b.Path[i]));
             }
+            string secimler = string.Join(",", Seviyeler.Select(k => "u.[" + k + "]"));
 
-            string sql = "SELECT " + string.Join(",", Seviyeler.Select(k => "[" + k + "]"))
-                        + ", Height, Rev, Tasarim, UrunKodu FROM dbo.Urun WHERE "
-                        + string.Join(" AND ", whereParts)
-                        + " ORDER BY " + string.Join(",", Seviyeler.Select(k => "[" + k + "]"))
-                        + ", Height, Rev";
+            string sql = $@"
+SELECT {secimler},
+       u.Height,
+       ISNULL(u.Rev,'')      AS Rev,
+       ISNULL(u.Tasarim,'')  AS Tasarim,
+       ISNULL(u.UrunKodu,'') AS UrunKodu,
+       (SELECT COUNT(*) FROM dbo.Urun u2
+          WHERE u2.Design=u.Design AND u2.Sector=u.Sector AND u2.ProductType=u.ProductType
+            AND u2.StructureType=u.StructureType AND u2.VoltageAyak=u.VoltageAyak
+            AND u2.Foundation=u.Foundation AND u2.Tower=u.Tower
+            AND u2.Height=u.Height
+            AND u2.Rev IS NOT NULL AND LTRIM(RTRIM(u2.Rev))<>'') AS Varyant
+FROM dbo.Urun u
+WHERE {string.Join(" AND ", whereParts)}
+  AND (u.Rev IS NULL OR LTRIM(RTRIM(u.Rev))='')
+ORDER BY u.Design, u.Sector, u.ProductType, u.StructureType, u.VoltageAyak, u.Foundation, u.Tower, u.Height";
 
             try
             {
                 var dt = DB.GetTable(sql, pars.ToArray());
                 BindGrid(dt);
                 grpSag.Text = "📋  " + string.Join("  →  ", b.Path.Where(x => !string.IsNullOrEmpty(x)))
-                            + $"  ({dt.Rows.Count} ürün)";
+                            + $"  ({dt.Rows.Count} ana ürün)";
             }
             catch (Exception ex)
             {
@@ -283,44 +271,36 @@ namespace BaranYardimci
         }
 
         // ════════════════════════════════════════════════════════════
-        //  YAPRAK AÇ → FrmUrunDetay
+        //  ÇİFT TIK → VARYANTLAR
         // ════════════════════════════════════════════════════════════
-        private void YapragiAc(TreeNode node)
+        private void SeciliyiVaryantOlarakAc()
         {
-            if (node == null) { MessageBox.Show("Önce ağaçtan bir düğüm seçin."); return; }
-            var b = (NodeBilgi)node.Tag;
-            if (!b.YaprakMi)
+            if (dataGridView1.SelectedRows.Count == 0)
             {
-                MessageBox.Show("Bu bir kategori dalı (📁).\nVaryantları görmek için yaprak (📦) düğüm seçin.",
-                    "Bilgi", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("Önce sağdaki listeden bir ana ürün seçin.", "Bilgi",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
-            using (var frm = new FrmUrunDetay(b.Path))
+            var row = dataGridView1.SelectedRows[0];
+            var path = new string[Seviyeler.Length];
+            for (int i = 0; i < Seviyeler.Length; i++)
+                path[i] = row.Cells[Seviyeler[i]]?.Value?.ToString() ?? "";
+            string height = row.Cells["Height"]?.Value?.ToString() ?? "";
+
+            using (var frm = new FrmUrunDetay(path, height))
             {
                 frm.StartPosition = FormStartPosition.CenterParent;
                 if (frm.ShowDialog(this) == DialogResult.OK)
-                    AgacYukle(); // Değişiklik olduysa ağacı yenile
+                {
+                    AgacYukle();
+                    if (tvKategori.SelectedNode != null)
+                        TvKategori_AfterSelect(tvKategori, new TreeViewEventArgs(tvKategori.SelectedNode));
+                }
             }
-        }
-
-        private TreeNode DugumeGit(string[] path)
-        {
-            TreeNodeCollection cur = tvKategori.Nodes;
-            TreeNode son = null;
-            foreach (var ad in path)
-            {
-                TreeNode bulundu = null;
-                foreach (TreeNode t in cur)
-                    if (string.Equals(t.Name, ad, StringComparison.OrdinalIgnoreCase))
-                    { bulundu = t; break; }
-                if (bulundu == null) return son;
-                son = bulundu; cur = bulundu.Nodes;
-            }
-            return son;
         }
 
         // ════════════════════════════════════════════════════════════
-        //  DÜZENLEME: YENİDEN ADLANDIR
+        //  YENİDEN ADLANDIR
         // ════════════════════════════════════════════════════════════
         private void YenidenAdlandir(TreeNode node)
         {
@@ -332,7 +312,6 @@ namespace BaranYardimci
             string yeni = MetinDialog($"'{SeviyeAdlari[b.Seviye]}' düğümünü yeniden adlandır:", eski);
             if (string.IsNullOrWhiteSpace(yeni) || yeni == eski) return;
 
-            // WHERE: parent path tam eşleşmeli + bu seviye eski
             var whereParts = new List<string>();
             var pars = new List<SqlParameter>();
             for (int i = 0; i < b.Seviye; i++)
@@ -362,46 +341,30 @@ namespace BaranYardimci
         }
 
         // ════════════════════════════════════════════════════════════
-        //  DÜZENLEME: SİL
+        //  DÜĞÜMÜN ALTINA YENİ EKLE
         // ════════════════════════════════════════════════════════════
-        private void DugumSil(TreeNode node)
+        private void DugumeAltEkle(TreeNode node)
         {
             if (node == null) return;
             var b = (NodeBilgi)node.Tag;
-            var whereParts = new List<string>();
-            var pars = new List<SqlParameter>();
-            for (int i = 0; i <= b.Seviye; i++)
-            {
-                whereParts.Add("[" + Seviyeler[i] + "]=@p" + i);
-                pars.Add(new SqlParameter("@p" + i, b.Path[i]));
-            }
-            string sql = "DELETE FROM dbo.Urun WHERE " + string.Join(" AND ", whereParts);
 
-            if (MessageBox.Show(
-                $"⚠ Bu düğüm ve TÜM alt ürünleri SİLİNECEK!\n\n" +
-                $"Yol: {string.Join(" → ", b.Path)}\n" +
-                $"Tahmini etkilenen kayıt: {b.AltToplam}\n\n" +
-                "Devam edilsin mi?",
-                "Tehlikeli İşlem", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return;
+            // Bu düğümün path'iyle yeni ürün formunu doldur,
+            // kalan kategorileri kullanıcı dolduracak
+            var v = new string[7];
+            for (int i = 0; i < b.Path.Length; i++) v[i] = b.Path[i];
 
-            try
+            using (var frm = new FrmYeniUrun(v))
             {
-                int n = DB.Execute(sql, pars.ToArray());
-                DurumYaz($"🗑 {n} kayıt silindi.", Color.FromArgb(255, 180, 100));
-                AgacYukle();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Hata: " + ex.Message, "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                frm.StartPosition = FormStartPosition.CenterParent;
+                if (frm.ShowDialog(this) == DialogResult.OK) AgacYukle();
             }
         }
 
         // ════════════════════════════════════════════════════════════
-        //  YENİ ÜRÜN — 7 kategori + Height/Rev/Tasarim
+        //  YENİ ÜRÜN (alttaki büyük buton)
         // ════════════════════════════════════════════════════════════
         private void BtnYeniUrun_Click(object sender, EventArgs e)
         {
-            // Seçili düğümün path'ini varsayılan olarak kullan
             string[] varsayilan = new string[7];
             if (tvKategori.SelectedNode != null)
             {
@@ -417,26 +380,32 @@ namespace BaranYardimci
         }
 
         // ════════════════════════════════════════════════════════════
-        //  HIZLI ARAMA
+        //  HIZLI ARAMA — sadece ana ürünler (Rev boş)
         // ════════════════════════════════════════════════════════════
         private void BtnTasarimSearch_Click(object sender, EventArgs e)
         {
             string raw = txtTasarimSearch.Text ?? "";
             string withHyphen = Regex.Replace(raw.Trim(), @"\s+", "");
-            if (string.IsNullOrWhiteSpace(withHyphen))
-            { MessageBox.Show("Arama metni giriniz."); return; }
+            if (string.IsNullOrWhiteSpace(withHyphen)) { MessageBox.Show("Arama metni girin."); return; }
             string noHyphen = withHyphen.Replace("-", "");
 
-            const string sql = @"
-SELECT Design, Sector, ProductType, StructureType, VoltageAyak, Foundation, Tower, Height, Rev, Tasarim, UrunKodu
+            string secimler = string.Join(",", Seviyeler.Select(k => "[" + k + "]"));
+            string sql = $@"
+SELECT {secimler}, Height,
+       ISNULL(Rev,'')      AS Rev,
+       ISNULL(Tasarim,'')  AS Tasarim,
+       ISNULL(UrunKodu,'') AS UrunKodu
 FROM dbo.Urun
 WHERE
-    REPLACE(REPLACE(ISNULL(Tasarim , ''), ' ', ''), '-', '') = @noHyphen
-    OR REPLACE(ISNULL(Tasarim , ''), ' ', '')               = @withHyphen
-    OR ISNULL(Tasarim , '')                                  = @withHyphen
-    OR REPLACE(REPLACE(ISNULL(UrunKodu, ''), ' ', ''), '-', '') = @noHyphen
-    OR ISNULL(UrunKodu, '')                                  = @withHyphen
-ORDER BY Design, Sector, ProductType";
+    (Rev IS NULL OR LTRIM(RTRIM(Rev))='')
+    AND (
+        REPLACE(REPLACE(ISNULL(Tasarim , ''), ' ', ''), '-', '') = @noHyphen
+        OR REPLACE(ISNULL(Tasarim , ''), ' ', '')               = @withHyphen
+        OR ISNULL(Tasarim , '')                                  = @withHyphen
+        OR REPLACE(REPLACE(ISNULL(UrunKodu, ''), ' ', ''), '-', '') = @noHyphen
+        OR ISNULL(UrunKodu, '')                                  = @withHyphen
+    )
+ORDER BY {secimler}, Height";
 
             try
             {
@@ -444,19 +413,14 @@ ORDER BY Design, Sector, ProductType";
                     new SqlParameter("@withHyphen", SqlDbType.NVarChar, 500) { Value = withHyphen },
                     new SqlParameter("@noHyphen", SqlDbType.NVarChar, 500) { Value = noHyphen });
                 BindGrid(dt);
-                if (dt.Rows.Count == 0)
-                    DurumYaz($"⚠ '{raw}' bulunamadı.", Color.FromArgb(255, 200, 100));
-                else
-                    DurumYaz($"✅ {dt.Rows.Count} eşleşme.", Color.FromArgb(140, 240, 160));
+                DurumYaz(dt.Rows.Count == 0 ? $"⚠ '{raw}' bulunamadı." : $"✅ {dt.Rows.Count} eşleşme.",
+                    dt.Rows.Count == 0 ? Color.FromArgb(255, 200, 100) : Color.FromArgb(140, 240, 160));
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show("SQL hatası: " + ex.Message, "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
+            catch (Exception ex) { MessageBox.Show("SQL hatası: " + ex.Message); }
         }
 
         // ════════════════════════════════════════════════════════════
-        //  GRID
+        //  GRID — içeriğe göre kolon genişliği
         // ════════════════════════════════════════════════════════════
         private void BindGrid(DataTable dt)
         {
@@ -473,7 +437,8 @@ ORDER BY Design, Sector, ProductType";
                 ["Height"] = "Yükseklik",
                 ["Rev"] = "Rev",
                 ["Tasarim"] = "Tasarım Kodu",
-                ["UrunKodu"] = "Ürün Kodu"
+                ["UrunKodu"] = "Ürün Kodu",
+                ["Varyant"] = "Varyant"
             };
             foreach (var kv in headers)
                 if (dataGridView1.Columns[kv.Key] != null)
@@ -484,12 +449,35 @@ ORDER BY Design, Sector, ProductType";
                 dataGridView1.Columns["UrunKodu"].DefaultCellStyle.BackColor = Color.FromArgb(255, 250, 220);
                 dataGridView1.Columns["UrunKodu"].DefaultCellStyle.Font = new Font("Consolas", 9.5f, FontStyle.Bold);
             }
-            dataGridView1.AutoResizeColumns();
-            lblKayitSayisi.Text = $"📊 {dt.Rows.Count} ürün";
+            if (dataGridView1.Columns["Varyant"] != null)
+            {
+                dataGridView1.Columns["Varyant"].DefaultCellStyle.BackColor = Color.FromArgb(220, 240, 255);
+                dataGridView1.Columns["Varyant"].DefaultCellStyle.Font = new Font("Segoe UI", 10f, FontStyle.Bold);
+                dataGridView1.Columns["Varyant"].DefaultCellStyle.ForeColor = Color.FromArgb(0, 80, 160);
+                dataGridView1.Columns["Varyant"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            }
+            if (dataGridView1.Columns["Height"] != null)
+            {
+                dataGridView1.Columns["Height"].DefaultCellStyle.Font = new Font("Segoe UI", 10f, FontStyle.Bold);
+                dataGridView1.Columns["Height"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            }
+
+            // İçeriğe göre otomatik sığdır
+            dataGridView1.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+            foreach (DataGridViewColumn col in dataGridView1.Columns)
+                col.AutoSizeMode = DataGridViewAutoSizeMode.AllCells;
+            dataGridView1.AutoResizeColumns(DataGridViewAutoSizeColumnsMode.AllCells);
+            foreach (DataGridViewColumn col in dataGridView1.Columns)
+            {
+                if (col.Width > 280) col.Width = 280;
+                if (col.Width < 70) col.Width = 70;
+            }
+
+            lblKayitSayisi.Text = $"📊 {dt.Rows.Count} ana ürün";
         }
 
         // ════════════════════════════════════════════════════════════
-        //  YARDIMCI: input dialog
+        //  Yardımcılar
         // ════════════════════════════════════════════════════════════
         public static string MetinDialog(string prompt, string defaultText = "")
         {
@@ -512,10 +500,49 @@ ORDER BY Design, Sector, ProductType";
             }
         }
 
+        public static string SonrakiRevUret(string[] path, string height)
+        {
+            try
+            {
+                var pars = new List<SqlParameter>();
+                var w = new List<string>();
+                for (int i = 0; i < Seviyeler.Length; i++)
+                {
+                    w.Add("[" + Seviyeler[i] + "]=@p" + i);
+                    pars.Add(new SqlParameter("@p" + i, path[i] ?? ""));
+                }
+                w.Add("Height=@h"); pars.Add(new SqlParameter("@h", height ?? ""));
+
+                string sql = "SELECT Rev FROM dbo.Urun WHERE " + string.Join(" AND ", w);
+                var dt = DB.GetTable(sql, pars.ToArray());
+                var mevcut = dt.AsEnumerable()
+                    .Select(r => (r["Rev"]?.ToString() ?? "").Trim().ToUpper())
+                    .Where(s => !string.IsNullOrEmpty(s))
+                    .ToList();
+
+                if (mevcut.Count == 0) return "";
+                bool hepsiSayi = mevcut.All(s => int.TryParse(s, out _));
+                if (hepsiSayi)
+                {
+                    int max = mevcut.Max(s => int.Parse(s));
+                    return (max + 1).ToString();
+                }
+                var harfler = mevcut.Where(s => s.Length == 1 && s[0] >= 'A' && s[0] <= 'Z').ToList();
+                if (harfler.Count > 0)
+                {
+                    char max = harfler.Max(s => s[0]);
+                    char yeni = (char)(max + 1);
+                    if (yeni > 'Z') return "A1";
+                    return yeni.ToString();
+                }
+                return (mevcut.Count + 1).ToString();
+            }
+            catch { return ""; }
+        }
+
         private void DurumYaz(string m, Color c)
         { try { lblStatus.Text = m; lblStatus.ForeColor = c; } catch { } }
 
-        // ── Tag class ────────────────────────────────────────────────
         private class NodeBilgi
         {
             public int Seviye;
