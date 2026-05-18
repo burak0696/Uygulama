@@ -147,23 +147,69 @@ namespace BaranYardimci
             try { pnlSonucButonlar2.Controls.Add(pnlLegend); pnlLegend.BringToFront(); } catch { }
             try { if (grpSonuc != null && grpSonuc.Parent != null) { grpSonuc.Parent.Controls.Add(pnlLegend); pnlLegend.BringToFront(); } } catch { }
 
-            // ── Exceli Aç ──────────────────────────────────────────────────
-            btnExceliAc = new Button { Text = "📂  Exceli Aç", Dock = DockStyle.Right, Width = 160, Height = 47, Font = new Font("Segoe UI", 9.5f, FontStyle.Bold), FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(0, 120, 180), ForeColor = Color.White, Cursor = Cursors.Hand };
-            btnExceliAc.FlatAppearance.BorderSize = 0;
-            btnExceliAc.Click += btnExceliAc_Click;
-            try { pnlSonucButonlar.Controls.Add(btnExceliAc); } catch { }
+            // ─── EK BUTONLAR ───────────────────────────────────────────
+            // pnlSonucButonlar paneline eklenecek ek butonlar
+            // Designer'da zaten var olan butonlar: Hesapla, Malzeme İhtiyacı, ERP Aktarım
+            // Bunların arasına karışmadan yeni butonları sağa yerleştireceğiz
 
-            // ── Tüm Excel Oluştur ──────────────────────────────────────────
-            btnTumExcel = new Button { Text = "📋  Tüm Excel Oluştur", Dock = DockStyle.Right, Width = 200, Height = 47, Font = new Font("Segoe UI", 9.5f, FontStyle.Bold), FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(100, 60, 160), ForeColor = Color.White, Cursor = Cursors.Hand };
-            btnTumExcel.FlatAppearance.BorderSize = 0;
-            btnTumExcel.Click += btnTumExcel_Click;
-            try { pnlSonucButonlar.Controls.Add(btnTumExcel); } catch { }
+            if (pnlSonucButonlar != null)
+            {
+                // 1) SEÇİLENİ SİL - En solda
+                btnSil = new Button
+                {
+                    Text = "🗑  Seçileni Sil",
+                    Size = new Size(140, 48),
+                    Location = new Point(8, 8),
+                    Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+                    FlatStyle = FlatStyle.Flat,
+                    BackColor = Color.FromArgb(160, 40, 40),
+                    ForeColor = Color.White,
+                    Cursor = Cursors.Hand,
+                    Anchor = AnchorStyles.Top | AnchorStyles.Left
+                };
+                btnSil.FlatAppearance.BorderSize = 0;
+                btnSil.Click += btnSil_Click;
+                pnlSonucButonlar.Controls.Add(btnSil);
 
-            // ── Seçileni Sil ───────────────────────────────────────────────
-            btnSil = new Button { Text = "🗑  Seçileni Sil", Dock = DockStyle.Right, Width = 150, Height = 47, Font = new Font("Segoe UI", 9.5f, FontStyle.Bold), FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(160, 40, 40), ForeColor = Color.White, Cursor = Cursors.Hand };
-            btnSil.FlatAppearance.BorderSize = 0;
-            btnSil.Click += btnSil_Click;
-            try { pnlSonucButonlar.Controls.Add(btnSil); } catch { }
+                // 2) EXCELİ AÇ - Sağ tarafta
+                btnExceliAc = new Button
+                {
+                    Text = "📂  Exceli Aç",
+                    Size = new Size(150, 48),
+                    Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+                    FlatStyle = FlatStyle.Flat,
+                    BackColor = Color.FromArgb(0, 120, 180),
+                    ForeColor = Color.White,
+                    Cursor = Cursors.Hand,
+                    Anchor = AnchorStyles.Top | AnchorStyles.Right
+                };
+                btnExceliAc.FlatAppearance.BorderSize = 0;
+                btnExceliAc.Click += btnExceliAc_Click;
+                pnlSonucButonlar.Controls.Add(btnExceliAc);
+
+                // 3) TÜM EXCEL OLUŞTUR - En sağda
+                btnTumExcel = new Button
+                {
+                    Text = "📋  Tüm Excel Oluştur",
+                    Size = new Size(190, 48),
+                    Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+                    FlatStyle = FlatStyle.Flat,
+                    BackColor = Color.FromArgb(100, 60, 160),
+                    ForeColor = Color.White,
+                    Cursor = Cursors.Hand,
+                    Anchor = AnchorStyles.Top | AnchorStyles.Right
+                };
+                btnTumExcel.FlatAppearance.BorderSize = 0;
+                btnTumExcel.Click += btnTumExcel_Click;
+                pnlSonucButonlar.Controls.Add(btnTumExcel);
+
+                // Resize event'ine bağla - sağ butonların pozisyonlarını ayarlamak için
+                pnlSonucButonlar.Resize -= pnlSonucButonlar_Resize;
+                pnlSonucButonlar.Resize += pnlSonucButonlar_Resize;
+
+                // İlk yerleşimi yap
+                pnlSonucButonlar_Resize(pnlSonucButonlar, EventArgs.Empty);
+            }
 
             if (ctxDosya == null) ctxDosya = new ContextMenuStrip { Font = new Font("Segoe UI", 10f) };
             ctxDosya.Items.Clear();
@@ -279,6 +325,32 @@ namespace BaranYardimci
                 foreach (var f in _favoriler) lb.Items.Add("📊  " + Path.GetFileNameWithoutExtension(f));
             }
             catch { }
+        }
+
+        // ── Responsive Buton Yerleşimi ──────────────────────────────────
+        private void pnlSonucButonlar_Resize(object sender, EventArgs e)
+        {
+            if (pnlSonucButonlar == null) return;
+
+            // Panel genişliğine göre sağ butonları yerleştir
+            int panelWidth = pnlSonucButonlar.ClientSize.Width;
+            int padding = 8;
+
+            // Sağdan sola sırayla yerleştir
+            int rightX = panelWidth - padding;
+
+            if (btnTumExcel != null)
+            {
+                rightX -= btnTumExcel.Width;
+                btnTumExcel.Location = new Point(rightX, 8);
+                rightX -= padding;
+            }
+
+            if (btnExceliAc != null)
+            {
+                rightX -= btnExceliAc.Width;
+                btnExceliAc.Location = new Point(rightX, 8);
+            }
         }
 
         private void Donusturucu_Load(object sender, EventArgs e) => DurumGuncelle();
@@ -823,14 +895,22 @@ namespace BaranYardimci
                 var sonuc = frmPrj.ShowDialog();
                 if (sonuc == DialogResult.OK)
                 {
-                    if (string.IsNullOrWhiteSpace(txtPrj.Text)) { MessageBox.Show("Proje No boş olamaz!"); return; }
+                    if (string.IsNullOrWhiteSpace(txtPrj.Text)) 
+                    { 
+                        MessageBox.Show("Proje No boş olamaz! Lütfen geçerli bir proje numarası girin.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning); 
+                        return; 
+                    }
                     _projeNo = txtPrj.Text.Trim();
                 }
                 else if (sonuc == DialogResult.Ignore)
                 {
-                    _projeNo = ""; // daha sonra girilecek
+                    _projeNo = ""; // daha sonra girilecek, PROJE_NO_GIRILMEDI olarak yazılacak
                 }
-                else return;
+                else 
+                {
+                    // Kullanıcı dialogu kapattı veya Cancel'a bastı, işlemi iptal et
+                    return;
+                }
             }
 
             var sm = SM();

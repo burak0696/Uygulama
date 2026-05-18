@@ -357,17 +357,31 @@
             this.pnlSonucButonlar.Controls.Add(this.btnHesapla);
             this.pnlSonucButonlar.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.pnlSonucButonlar.Padding = new System.Windows.Forms.Padding(0, 6, 0, 0);
-            this.pnlSonucButonlar.Size = new System.Drawing.Size(1095, 56);
+            this.pnlSonucButonlar.Size = new System.Drawing.Size(1095, 62);
 
             BtnStyle(this.btnHesapla, "Hesapla", System.Drawing.Color.FromArgb(0, 122, 204));
             BtnStyle(this.btnHamDataExcel, "Ham Data - Excel", System.Drawing.Color.FromArgb(34, 139, 34));
             BtnStyle(this.btnMalzemeExcel, "Malzeme İhtiyacı", System.Drawing.Color.FromArgb(178, 34, 34));
             BtnStyle(this.btnErpAktarim, "ERP Aktarım  →  Ağa Kaydet", System.Drawing.Color.FromArgb(0, 130, 120));
-            this.btnErpAktarim.Size = new System.Drawing.Size(280, 48);
-            this.btnHesapla.Location = new System.Drawing.Point(0, 6);
-            this.btnHamDataExcel.Location = new System.Drawing.Point(210, 6); this.btnHamDataExcel.Visible = false;
-            this.btnMalzemeExcel.Location = new System.Drawing.Point(210, 6);
-            this.btnErpAktarim.Location = new System.Drawing.Point(420, 6);
+
+            // Butonları yeniden boyutlandır ve yerleştir
+            // DİKKAT: btnSil runtime'da 8,8 konumuna ekleniyor, ona yer açıyoruz
+            this.btnHesapla.Size = new System.Drawing.Size(160, 48);
+            this.btnMalzemeExcel.Size = new System.Drawing.Size(170, 48);
+            this.btnErpAktarim.Size = new System.Drawing.Size(220, 48);
+
+            // btnSil için 150px boşluk bırakıyoruz (8px başlangıç + 140px buton + 8px boşluk = 156px)
+            this.btnHesapla.Location = new System.Drawing.Point(160, 8);
+            this.btnHamDataExcel.Location = new System.Drawing.Point(210, 8); 
+            this.btnHamDataExcel.Visible = false;
+            this.btnMalzemeExcel.Location = new System.Drawing.Point(330, 8);
+            this.btnErpAktarim.Location = new System.Drawing.Point(510, 8);
+
+            // Anchor ayarları
+            this.btnHesapla.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.btnMalzemeExcel.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.btnErpAktarim.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+
             this.btnHesapla.Click += new System.EventHandler(this.btnHesapla_Click);
             this.btnHamDataExcel.Click += new System.EventHandler(this.btnHamDataExcel_Click);
             this.btnMalzemeExcel.Click += new System.EventHandler(this.btnMalzemeExcel_Click);
@@ -378,7 +392,7 @@
             this.pnlSonucButonlar2.Controls.Add(this.btnVeritabaniKaydet);
             this.pnlSonucButonlar2.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.pnlSonucButonlar2.Padding = new System.Windows.Forms.Padding(0, 6, 0, 0);
-            this.pnlSonucButonlar2.Size = new System.Drawing.Size(1095, 56);
+            this.pnlSonucButonlar2.Size = new System.Drawing.Size(1095, 62);
 
             BtnStyle(this.btnVeritabaniKaydet, "Veritabanına Aktar", System.Drawing.Color.FromArgb(75, 0, 130));
             BtnStyle(this.btnGalvanizEkran, "Galvaniz Ekranı", System.Drawing.Color.FromArgb(200, 120, 0));
