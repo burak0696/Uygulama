@@ -874,9 +874,11 @@ namespace BaranYardimci
             dgvDosyalar.EndEdit();
 
             // ── Proje No Dialog ───────────────────────────────────────────
+            // ── Proje No Dialog ───────────────────────────────────────────
             using (var frmPrj = new Form())
             {
-                frmPrj.Text = "Proje Numarası"; frmPrj.Size = new Size(440, 190);
+                frmPrj.Text = "Proje Numarası";
+                frmPrj.Size = new Size(500, 210);
                 frmPrj.StartPosition = FormStartPosition.CenterParent;
                 frmPrj.FormBorderStyle = FormBorderStyle.FixedDialog;
                 frmPrj.MaximizeBox = false; frmPrj.MinimizeBox = false;
@@ -884,32 +886,37 @@ namespace BaranYardimci
 
                 var lblAcik = new Label { Text = "Proje numarasını şimdi girmek ister misiniz?", Dock = DockStyle.Top, Height = 42, Font = new Font("Segoe UI", 10f), TextAlign = ContentAlignment.MiddleCenter };
                 var txtPrj = new TextBox { Dock = DockStyle.Top, Height = 40, Font = new Font("Segoe UI", 13f), Text = _projeNo };
-                var pnlBtn = new Panel { Dock = DockStyle.Bottom, Height = 52 };
-                var btnGir = new Button { Text = "✔  Proje No Gir", DialogResult = DialogResult.OK, Dock = DockStyle.Left, Width = 195, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(0, 122, 180), ForeColor = Color.White, Font = new Font("Segoe UI", 10f, FontStyle.Bold) };
-                var btnSonra = new Button { Text = "⏭  Daha Sonra Gireceğim", DialogResult = DialogResult.Ignore, Dock = DockStyle.Right, Width = 220, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(90, 90, 105), ForeColor = Color.White, Font = new Font("Segoe UI", 10f, FontStyle.Bold) };
-                btnGir.FlatAppearance.BorderSize = 0; btnSonra.FlatAppearance.BorderSize = 0;
-                pnlBtn.Controls.Add(btnSonra); pnlBtn.Controls.Add(btnGir);
-                frmPrj.Controls.Add(pnlBtn); frmPrj.Controls.Add(txtPrj); frmPrj.Controls.Add(lblAcik);
-                frmPrj.AcceptButton = btnGir;
+                var pnlBtn = new Panel { Dock = DockStyle.Bottom, Height = 56 };
 
-                var sonuc = frmPrj.ShowDialog();
+                var btnGir = new Button { Text = "✔  Proje No Gir", DialogResult = DialogResult.OK, Dock = DockStyle.Left, Width = 180, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(0, 122, 180), ForeColor = Color.White, Font = new Font("Segoe UI", 10f, FontStyle.Bold) };
+                var btnSonra = new Button { Text = "⏭  Daha Sonra Gireceğim", DialogResult = DialogResult.Ignore, Dock = DockStyle.Right, Width = 200, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(90, 90, 105), ForeColor = Color.White, Font = new Font("Segoe UI", 10f, FontStyle.Bold) };
+                btnGir.FlatAppearance.BorderSize = 0;
+                btnSonra.FlatAppearance.BorderSize = 0;
+
+                pnlBtn.Controls.Add(btnSonra);
+                pnlBtn.Controls.Add(btnGir);
+                frmPrj.Controls.Add(pnlBtn);
+                frmPrj.Controls.Add(txtPrj);
+                frmPrj.Controls.Add(lblAcik);
+
+                frmPrj.AcceptButton = btnGir;
+                frmPrj.CancelButton = btnSonra; // ESC veya X → "Daha sonra" gibi davransın
+                frmPrj.Shown += (s, ea) => { try { txtPrj.Focus(); txtPrj.SelectAll(); } catch { } };
+
+                var sonuc = frmPrj.ShowDialog(this);
                 if (sonuc == DialogResult.OK)
                 {
-                    if (string.IsNullOrWhiteSpace(txtPrj.Text)) 
-                    { 
-                        MessageBox.Show("Proje No boş olamaz! Lütfen geçerli bir proje numarası girin.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning); 
-                        return; 
+                    if (string.IsNullOrWhiteSpace(txtPrj.Text))
+                    {
+                        MessageBox.Show("Proje No boş olamaz!", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
                     }
                     _projeNo = txtPrj.Text.Trim();
                 }
-                else if (sonuc == DialogResult.Ignore)
+                else
                 {
-                    _projeNo = ""; // daha sonra girilecek, PROJE_NO_GIRILMEDI olarak yazılacak
-                }
-                else 
-                {
-                    // Kullanıcı dialogu kapattı veya Cancel'a bastı, işlemi iptal et
-                    return;
+                    // Ignore, Cancel veya X → sonra girilecek
+                    _projeNo = "";
                 }
             }
 

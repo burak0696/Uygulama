@@ -18,6 +18,10 @@
             this.pnlLogo = new System.Windows.Forms.Panel();
             this.lblLogo = new System.Windows.Forms.Label();
             this.pnlHeader = new System.Windows.Forms.Panel();
+            this.pnlDbDurum = new System.Windows.Forms.Panel();
+            this.pnlDbIsik = new System.Windows.Forms.Panel();
+            this.lblDbBaslik = new System.Windows.Forms.Label();
+            this.lblDbDurum = new System.Windows.Forms.Label();
             this.lblTarih = new System.Windows.Forms.Label();
             this.lblBaslik = new System.Windows.Forms.Label();
             this.pnlContainer = new System.Windows.Forms.Panel();
@@ -39,6 +43,7 @@
             this.pnlSidebar.SuspendLayout();
             this.pnlLogo.SuspendLayout();
             this.pnlHeader.SuspendLayout();
+            this.pnlDbDurum.SuspendLayout();
             this.pnlContainer.SuspendLayout();
             this.flowLayoutPanel1.SuspendLayout();
             this.pnlFooter.SuspendLayout();
@@ -83,7 +88,7 @@
             this.lblSidebarInfo.Padding = new System.Windows.Forms.Padding(15, 0, 0, 0);
             this.lblSidebarInfo.Size = new System.Drawing.Size(230, 50);
             this.lblSidebarInfo.TabIndex = 6;
-            this.lblSidebarInfo.Text = "BARAN ÇELİK\nSürüm 0.0.2";
+            this.lblSidebarInfo.Text = "BARAN ÇELİK\nSürüm 0.0.3";
             this.lblSidebarInfo.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // pnlLogo
@@ -111,22 +116,68 @@
             // pnlHeader
             // 
             this.pnlHeader.BackColor = System.Drawing.Color.White;
+            this.pnlHeader.Controls.Add(this.pnlDbDurum);
             this.pnlHeader.Controls.Add(this.lblTarih);
             this.pnlHeader.Controls.Add(this.lblBaslik);
             this.pnlHeader.Dock = System.Windows.Forms.DockStyle.Top;
             this.pnlHeader.Location = new System.Drawing.Point(230, 0);
             this.pnlHeader.Name = "pnlHeader";
-            this.pnlHeader.Size = new System.Drawing.Size(920, 70);
+            this.pnlHeader.Size = new System.Drawing.Size(920, 85);
             this.pnlHeader.TabIndex = 1;
+            // 
+            // pnlDbDurum
+            // 
+            this.pnlDbDurum.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.pnlDbDurum.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(247)))), ((int)(((byte)(249)))), ((int)(((byte)(252)))));
+            this.pnlDbDurum.Controls.Add(this.pnlDbIsik);
+            this.pnlDbDurum.Controls.Add(this.lblDbBaslik);
+            this.pnlDbDurum.Controls.Add(this.lblDbDurum);
+            this.pnlDbDurum.Cursor = System.Windows.Forms.Cursors.Help;
+            this.pnlDbDurum.Location = new System.Drawing.Point(670, 18);
+            this.pnlDbDurum.Name = "pnlDbDurum";
+            this.pnlDbDurum.Padding = new System.Windows.Forms.Padding(10, 6, 10, 6);
+            this.pnlDbDurum.Size = new System.Drawing.Size(235, 50);
+            this.pnlDbDurum.TabIndex = 2;
+            // 
+            // pnlDbIsik
+            // 
+            this.pnlDbIsik.BackColor = System.Drawing.Color.Transparent;
+            this.pnlDbIsik.Location = new System.Drawing.Point(12, 16);
+            this.pnlDbIsik.Name = "pnlDbIsik";
+            this.pnlDbIsik.Size = new System.Drawing.Size(18, 18);
+            this.pnlDbIsik.TabIndex = 0;
+            // 
+            // lblDbBaslik
+            // 
+            this.lblDbBaslik.AutoSize = true;
+            this.lblDbBaslik.Font = new System.Drawing.Font("Segoe UI", 7.5F, System.Drawing.FontStyle.Bold);
+            this.lblDbBaslik.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(120)))), ((int)(((byte)(130)))), ((int)(((byte)(150)))));
+            this.lblDbBaslik.Location = new System.Drawing.Point(40, 7);
+            this.lblDbBaslik.Name = "lblDbBaslik";
+            this.lblDbBaslik.Size = new System.Drawing.Size(83, 12);
+            this.lblDbBaslik.TabIndex = 1;
+            this.lblDbBaslik.Text = "VERİTABANI DURUMU";
+            // 
+            // lblDbDurum
+            // 
+            this.lblDbDurum.AutoSize = false;
+            this.lblDbDurum.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.lblDbDurum.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(90)))), ((int)(((byte)(110)))));
+            this.lblDbDurum.Location = new System.Drawing.Point(40, 22);
+            this.lblDbDurum.Name = "lblDbDurum";
+            this.lblDbDurum.Size = new System.Drawing.Size(185, 22);
+            this.lblDbDurum.TabIndex = 2;
+            this.lblDbDurum.Text = "Kontrol ediliyor...";
+            this.lblDbDurum.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // lblTarih
             // 
             this.lblTarih.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.lblTarih.Font = new System.Drawing.Font("Segoe UI", 10F);
+            this.lblTarih.Font = new System.Drawing.Font("Segoe UI", 9.5F);
             this.lblTarih.ForeColor = System.Drawing.Color.Gray;
-            this.lblTarih.Location = new System.Drawing.Point(670, 22);
+            this.lblTarih.Location = new System.Drawing.Point(450, 30);
             this.lblTarih.Name = "lblTarih";
-            this.lblTarih.Size = new System.Drawing.Size(240, 25);
+            this.lblTarih.Size = new System.Drawing.Size(210, 25);
             this.lblTarih.TabIndex = 1;
             this.lblTarih.Text = "24 Şubat 2026, Salı";
             this.lblTarih.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
@@ -136,7 +187,7 @@
             this.lblBaslik.AutoSize = true;
             this.lblBaslik.Font = new System.Drawing.Font("Segoe UI", 18F, System.Drawing.FontStyle.Bold);
             this.lblBaslik.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(36)))), ((int)(((byte)(40)))));
-            this.lblBaslik.Location = new System.Drawing.Point(25, 17);
+            this.lblBaslik.Location = new System.Drawing.Point(25, 25);
             this.lblBaslik.Name = "lblBaslik";
             this.lblBaslik.Size = new System.Drawing.Size(177, 32);
             this.lblBaslik.TabIndex = 0;
@@ -148,10 +199,10 @@
             this.pnlContainer.Controls.Add(this.flowLayoutPanel1);
             this.pnlContainer.Controls.Add(this.pnlFooter);
             this.pnlContainer.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.pnlContainer.Location = new System.Drawing.Point(230, 70);
+            this.pnlContainer.Location = new System.Drawing.Point(230, 85);
             this.pnlContainer.Name = "pnlContainer";
             this.pnlContainer.Padding = new System.Windows.Forms.Padding(25, 25, 25, 10);
-            this.pnlContainer.Size = new System.Drawing.Size(920, 630);
+            this.pnlContainer.Size = new System.Drawing.Size(920, 615);
             this.pnlContainer.TabIndex = 2;
             // 
             // flowLayoutPanel1
@@ -172,12 +223,12 @@
             this.flowLayoutPanel1.Location = new System.Drawing.Point(25, 25);
             this.flowLayoutPanel1.Name = "flowLayoutPanel1";
             this.flowLayoutPanel1.Padding = new System.Windows.Forms.Padding(5);
-            this.flowLayoutPanel1.Size = new System.Drawing.Size(870, 555);
+            this.flowLayoutPanel1.Size = new System.Drawing.Size(870, 540);
             this.flowLayoutPanel1.TabIndex = 0;
             // 
             // btnCardUrun
             // 
-            this.btnCardUrun.BackColor = System.Drawing.SystemColors.AppWorkspace;
+            this.btnCardUrun.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(52)))), ((int)(((byte)(152)))), ((int)(((byte)(219)))));
             this.btnCardUrun.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnCardUrun.FlatAppearance.BorderSize = 0;
             this.btnCardUrun.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
@@ -194,7 +245,7 @@
             // 
             // btnCardMusteri
             // 
-            this.btnCardMusteri.BackColor = System.Drawing.SystemColors.AppWorkspace;
+            this.btnCardMusteri.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(155)))), ((int)(((byte)(89)))), ((int)(((byte)(182)))));
             this.btnCardMusteri.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnCardMusteri.FlatAppearance.BorderSize = 0;
             this.btnCardMusteri.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
@@ -211,7 +262,7 @@
             // 
             // btnCardGalvaniz
             // 
-            this.btnCardGalvaniz.BackColor = System.Drawing.SystemColors.AppWorkspace;
+            this.btnCardGalvaniz.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(230)))), ((int)(((byte)(126)))), ((int)(((byte)(34)))));
             this.btnCardGalvaniz.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnCardGalvaniz.FlatAppearance.BorderSize = 0;
             this.btnCardGalvaniz.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
@@ -228,7 +279,7 @@
             // 
             // btnCardSarf
             // 
-            this.btnCardSarf.BackColor = System.Drawing.SystemColors.AppWorkspace;
+            this.btnCardSarf.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(26)))), ((int)(((byte)(188)))), ((int)(((byte)(156)))));
             this.btnCardSarf.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnCardSarf.FlatAppearance.BorderSize = 0;
             this.btnCardSarf.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
@@ -245,7 +296,7 @@
             // 
             // btnCardTeklif
             // 
-            this.btnCardTeklif.BackColor = System.Drawing.SystemColors.AppWorkspace;
+            this.btnCardTeklif.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(241)))), ((int)(((byte)(196)))), ((int)(((byte)(15)))));
             this.btnCardTeklif.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnCardTeklif.FlatAppearance.BorderSize = 0;
             this.btnCardTeklif.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
@@ -262,7 +313,7 @@
             // 
             // btnCardBakimOnarim
             // 
-            this.btnCardBakimOnarim.BackColor = System.Drawing.SystemColors.AppWorkspace;
+            this.btnCardBakimOnarim.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(127)))), ((int)(((byte)(140)))), ((int)(((byte)(141)))));
             this.btnCardBakimOnarim.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnCardBakimOnarim.FlatAppearance.BorderSize = 0;
             this.btnCardBakimOnarim.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
@@ -279,7 +330,7 @@
             // 
             // btnCardUretim
             // 
-            this.btnCardUretim.BackColor = System.Drawing.SystemColors.AppWorkspace;
+            this.btnCardUretim.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(231)))), ((int)(((byte)(76)))), ((int)(((byte)(60)))));
             this.btnCardUretim.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnCardUretim.FlatAppearance.BorderSize = 0;
             this.btnCardUretim.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
@@ -296,7 +347,7 @@
             // 
             // btnCardIK
             // 
-            this.btnCardIK.BackColor = System.Drawing.SystemColors.AppWorkspace;
+            this.btnCardIK.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(52)))), ((int)(((byte)(73)))), ((int)(((byte)(94)))));
             this.btnCardIK.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnCardIK.FlatAppearance.BorderSize = 0;
             this.btnCardIK.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
@@ -330,7 +381,7 @@
             // 
             // btnCardImalatPlanlama
             // 
-            this.btnCardImalatPlanlama.BackColor = System.Drawing.SystemColors.AppWorkspace;
+            this.btnCardImalatPlanlama.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(41)))), ((int)(((byte)(128)))), ((int)(((byte)(185)))));
             this.btnCardImalatPlanlama.Cursor = System.Windows.Forms.Cursors.Hand;
             this.btnCardImalatPlanlama.FlatAppearance.BorderSize = 0;
             this.btnCardImalatPlanlama.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
@@ -385,7 +436,7 @@
             // 
             this.pnlFooter.Controls.Add(this.lblFooter);
             this.pnlFooter.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.pnlFooter.Location = new System.Drawing.Point(25, 580);
+            this.pnlFooter.Location = new System.Drawing.Point(25, 565);
             this.pnlFooter.Name = "pnlFooter";
             this.pnlFooter.Size = new System.Drawing.Size(870, 40);
             this.pnlFooter.TabIndex = 1;
@@ -419,6 +470,8 @@
             this.pnlLogo.ResumeLayout(false);
             this.pnlHeader.ResumeLayout(false);
             this.pnlHeader.PerformLayout();
+            this.pnlDbDurum.ResumeLayout(false);
+            this.pnlDbDurum.PerformLayout();
             this.pnlContainer.ResumeLayout(false);
             this.flowLayoutPanel1.ResumeLayout(false);
             this.pnlFooter.ResumeLayout(false);
@@ -450,5 +503,9 @@
         private System.Windows.Forms.Panel pnlFooter;
         private System.Windows.Forms.Label lblFooter;
         private System.Windows.Forms.Button button1;
+        private System.Windows.Forms.Panel pnlDbDurum;
+        private System.Windows.Forms.Panel pnlDbIsik;
+        private System.Windows.Forms.Label lblDbBaslik;
+        private System.Windows.Forms.Label lblDbDurum;
     }
 }
