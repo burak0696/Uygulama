@@ -98,6 +98,7 @@ namespace BaranYardimci
         {
             if (!dgvDosyalar.Columns.Contains("colDurum"))
                 dgvDosyalar.Columns.Add(new DataGridViewTextBoxColumn
+
                 { Name = "colDurum", HeaderText = "Durum", FillWeight = 60f, ReadOnly = true });
 
             dgvDosyalar.DefaultCellStyle.BackColor = Color.White;
@@ -372,38 +373,50 @@ namespace BaranYardimci
 
         private void dgvDosyalar_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
         {
-            if (e.RowIndex < 0 || e.RowIndex >= dgvDosyalar.Rows.Count) return;
-            string yol = dgvDosyalar.Rows[e.RowIndex].Cells["colDosyaYolu"].Value?.ToString() ?? "";
+            try
+            {
+                if (e.RowIndex < 0) return;
+                if (e.RowIndex >= dgvDosyalar.RowCount) return;
+                if (!dgvDosyalar.Columns.Contains("colDosyaYolu")) return;
 
-            if (_civataEklendi.Contains(yol))
-            {
-                e.CellStyle.BackColor = Color.FromArgb(180, 240, 200);
-                e.CellStyle.ForeColor = Color.FromArgb(0, 90, 0);
-                e.CellStyle.SelectionBackColor = Color.FromArgb(140, 210, 160);
-                e.CellStyle.SelectionForeColor = Color.FromArgb(0, 60, 0);
+                var row = dgvDosyalar.Rows[e.RowIndex];
+                if (row == null || row.IsNewRow) return;
+
+                string yol = row.Cells["colDosyaYolu"].Value?.ToString() ?? "";
+
+                Color bg, fg, selBg, selFg;
+
+                if (_civataEklendi.Contains(yol))
+                {
+                    bg = Color.FromArgb(180, 240, 200); fg = Color.FromArgb(0, 90, 0);
+                    selBg = Color.FromArgb(140, 210, 160); selFg = Color.FromArgb(0, 60, 0);
+                }
+                else if (_rotaKaydedilen.Contains(yol))
+                {
+                    bg = Color.FromArgb(180, 210, 255); fg = Color.FromArgb(0, 50, 130);
+                    selBg = Color.FromArgb(140, 175, 230); selFg = Color.FromArgb(0, 30, 100);
+                }
+                else if (_erpAktarimYapilan.Contains(yol))
+                {
+                    bg = Color.FromArgb(255, 243, 180); fg = Color.FromArgb(110, 80, 0);
+                    selBg = Color.FromArgb(220, 205, 130); selFg = Color.FromArgb(80, 55, 0);
+                }
+                else
+                {
+                    bg = Color.FromArgb(255, 200, 200); fg = Color.FromArgb(120, 0, 0);
+                    selBg = Color.FromArgb(220, 160, 160); selFg = Color.FromArgb(80, 0, 0);
+                }
+
+                e.CellStyle.BackColor = bg;
+                e.CellStyle.ForeColor = fg;
+                e.CellStyle.SelectionBackColor = selBg;
+                e.CellStyle.SelectionForeColor = selFg;
+                e.FormattingApplied = true;
             }
-            else if (_rotaKaydedilen.Contains(yol))
+            catch
             {
-                e.CellStyle.BackColor = Color.FromArgb(180, 210, 255);
-                e.CellStyle.ForeColor = Color.FromArgb(0, 50, 130);
-                e.CellStyle.SelectionBackColor = Color.FromArgb(140, 175, 230);
-                e.CellStyle.SelectionForeColor = Color.FromArgb(0, 30, 100);
+                // sessizce yut — DGV bazen çizim sırasında geçici state'lerde tetikleniyor
             }
-            else if (_erpAktarimYapilan.Contains(yol))
-            {
-                e.CellStyle.BackColor = Color.FromArgb(255, 243, 180);
-                e.CellStyle.ForeColor = Color.FromArgb(110, 80, 0);
-                e.CellStyle.SelectionBackColor = Color.FromArgb(220, 205, 130);
-                e.CellStyle.SelectionForeColor = Color.FromArgb(80, 55, 0);
-            }
-            else
-            {
-                e.CellStyle.BackColor = Color.FromArgb(255, 200, 200);
-                e.CellStyle.ForeColor = Color.FromArgb(120, 0, 0);
-                e.CellStyle.SelectionBackColor = Color.FromArgb(220, 160, 160);
-                e.CellStyle.SelectionForeColor = Color.FromArgb(80, 0, 0);
-            }
-            e.FormattingApplied = true;
         }
 
         private void dgvDosyalar_MouseUp(object sender, MouseEventArgs e)
@@ -738,6 +751,17 @@ namespace BaranYardimci
             }
             if (ok > 0)
             {
+                try
+                {
+                    foreach (DataGridViewRow row in dgvDosyalar.Rows)
+                    {
+                        if (row == null || row.IsNewRow) continue;
+                        row.DefaultCellStyle = new DataGridViewCellStyle();
+                    }
+                    dgvDosyalar.Invalidate();
+                }
+                catch { }
+
                 DurumGuncelle();
                 MessageBox.Show(
                     $"✅  {ok} dosya yüklendi, {top} parça okundu.\n\n" +
@@ -746,6 +770,7 @@ namespace BaranYardimci
                     "Dosya Yüklendi", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
+       
 
         private bool DosyaVarMi(string yol)
         { foreach (DataGridViewRow r in dgvDosyalar.Rows) if (r.Cells["colDosyaYolu"].Value?.ToString() == yol) return true; return false; }
