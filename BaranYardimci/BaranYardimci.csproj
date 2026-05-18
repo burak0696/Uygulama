@@ -463,6 +463,9 @@
     <Compile Include="FrmMalzemeDegistir.Designer.cs">
       <DependentUpon>FrmMalzemeDegistir.cs</DependentUpon>
     </Compile>
+    <Compile Include="FrmMalzemeOzet.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="FrmTerminSec.cs">
       <SubType>Form</SubType>
     </Compile>

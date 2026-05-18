@@ -87,13 +87,46 @@ namespace BaranYardimci
         private Button btnExceliAc;
         private Button btnTumExcel;
         private Button btnSil;
+        private Button _btnMalzemeOzet;
 
         public Donusturucu()
         {
             InitializeComponent();
             KontrolleriOlustur();
         }
+        private void dgvDosyalar_SelectionChanged(object sender, EventArgs e)
+        {
+            // Tüm satırların row header'ını sıfırla, seçiliyi vurgula
+            foreach (DataGridViewRow r in dgvDosyalar.Rows)
+            {
+                if (r.IsNewRow) continue;
+                r.HeaderCell.Style.BackColor = Color.FromArgb(240, 240, 245);
+                r.HeaderCell.Value = "";
+            }
+            if (dgvDosyalar.SelectedRows.Count > 0)
+            {
+                var sel = dgvDosyalar.SelectedRows[0];
+                sel.HeaderCell.Style.BackColor = Color.FromArgb(0, 122, 204);
+                sel.HeaderCell.Style.ForeColor = Color.White;
+                sel.HeaderCell.Style.Font = new Font("Segoe UI", 11f, FontStyle.Bold);
+                sel.HeaderCell.Value = "▶";
+            }
+        }
 
+        private void dgvDosyalar_RowPrePaint(object sender, DataGridViewRowPrePaintEventArgs e)
+        {
+            // Seçili satıra kalın mavi sol border çiz
+            if (e.RowIndex < 0 || e.RowIndex >= dgvDosyalar.RowCount) return;
+            if (!dgvDosyalar.Rows[e.RowIndex].Selected) return;
+
+            var rect = e.RowBounds;
+            using (var pen = new Pen(Color.FromArgb(0, 122, 204), 3f))
+            {
+                e.Graphics.DrawLine(pen, rect.Left + 1, rect.Top, rect.Left + 1, rect.Bottom - 1);
+                e.Graphics.DrawLine(pen, rect.Left, rect.Top, rect.Right - 1, rect.Top);
+                e.Graphics.DrawLine(pen, rect.Left, rect.Bottom - 1, rect.Right - 1, rect.Bottom - 1);
+            }
+        }
         private void KontrolleriOlustur()
         {
             if (!dgvDosyalar.Columns.Contains("colDurum"))
@@ -112,6 +145,18 @@ namespace BaranYardimci
 
             dgvDosyalar.MouseUp -= dgvDosyalar_MouseUp;
             dgvDosyalar.MouseUp += dgvDosyalar_MouseUp;
+
+            // ── Seçili satır belirgin olsun ──
+            dgvDosyalar.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            dgvDosyalar.MultiSelect = false;
+            dgvDosyalar.RowHeadersVisible = true;
+            dgvDosyalar.RowHeadersWidth = 28;
+            dgvDosyalar.RowHeadersDefaultCellStyle.BackColor = Color.FromArgb(240, 240, 245);
+
+            dgvDosyalar.RowPrePaint -= dgvDosyalar_RowPrePaint;
+            dgvDosyalar.RowPrePaint += dgvDosyalar_RowPrePaint;
+            dgvDosyalar.SelectionChanged -= dgvDosyalar_SelectionChanged;
+            dgvDosyalar.SelectionChanged += dgvDosyalar_SelectionChanged;
 
             if (pnlDurumBar == null)
             {
@@ -236,12 +281,45 @@ namespace BaranYardimci
             }
 
             FavorileriYukle();
+            // ── Favoriler ListBox event bağla (designer atlanmış olabilir) ──
+            try
+            {
+                var lbFav = this.Controls.Find("lbFavoriler", true).FirstOrDefault() as ListBox;
+                if (lbFav != null)
+                {
+                    lbFav.DoubleClick -= lbFavoriler_DoubleClick;
+                    lbFav.DoubleClick += lbFavoriler_DoubleClick;
+                    lbFav.KeyDown -= lbFavoriler_KeyDown;
+                    lbFav.KeyDown += lbFavoriler_KeyDown;
+                    lbFav.Font = new Font("Segoe UI", 9.5f);
+                    lbFav.IntegralHeight = false;
+                }
+                var lbGec = this.Controls.Find("lbGecmis", true).FirstOrDefault() as ListBox;
+                if (lbGec != null)
+                {
+                    lbGec.DoubleClick -= lbGecmis_DoubleClick;
+                    lbGec.DoubleClick += lbGecmis_DoubleClick;
+                }
+            }
+            catch { }
             FavorileriListeyeYaz();
         }
 
         private void timerSaat_Tick(object sender, EventArgs e)
         { try { lblBaslik.Text = "    BARAN ÇELİK  —  " + DateTime.Now.ToString("HH:mm:ss"); } catch { } }
 
+        private void lbFavoriler_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode != Keys.Delete) return;
+            var lb = sender as ListBox;
+            if (lb == null) return;
+            int sel = lb.SelectedIndex;
+            if (sel < 0 || sel >= _favoriler.Count) return;
+            if (MessageBox.Show("Favori silinsin mi?", "Onay", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+            _favoriler.RemoveAt(sel);
+            FavorileriKaydet();
+            FavorileriListeyeYaz();
+        }
         private void lbFavoriler_DoubleClick(object sender, EventArgs e)
         {
             var lb = sender as ListBox; if (lb == null) return;
@@ -259,16 +337,26 @@ namespace BaranYardimci
 
         private void btnFavEkle_Click(object sender, EventArgs e)
         {
+            string yol = "";
             if (_sagKlikSatir >= 0 && _sagKlikSatir < dgvDosyalar.Rows.Count)
-            {
-                string yol = dgvDosyalar.Rows[_sagKlikSatir].Cells["colDosyaYolu"].Value?.ToString() ?? "";
-                if (_erpExcelYollari.ContainsKey(yol))
-                {
-                    string excel = _erpExcelYollari[yol];
-                    if (!_favoriler.Contains(excel, StringComparer.OrdinalIgnoreCase))
-                    { _favoriler.Add(excel); FavorileriKaydet(); FavorileriListeyeYaz(); }
-                }
-            }
+                yol = dgvDosyalar.Rows[_sagKlikSatir].Cells["colDosyaYolu"].Value?.ToString() ?? "";
+            else if (dgvDosyalar.SelectedRows.Count > 0)
+                yol = dgvDosyalar.SelectedRows[0].Cells["colDosyaYolu"].Value?.ToString() ?? "";
+
+            if (string.IsNullOrEmpty(yol))
+            { MessageBox.Show("Önce listeden bir dosya seçin.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+
+            if (!_erpExcelYollari.ContainsKey(yol))
+            { MessageBox.Show("Bu dosyanın ERP Excel'i henüz oluşmamış.\nÖnce ERP Aktarım yapın.", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+
+            string excel = _erpExcelYollari[yol];
+            if (_favoriler.Contains(excel, StringComparer.OrdinalIgnoreCase))
+            { MessageBox.Show("Bu dosya zaten favorilerde.", "Bilgi", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
+
+            _favoriler.Add(excel);
+            FavorileriKaydet();
+            FavorileriListeyeYaz();
+            MessageBox.Show("⭐ Favorilere eklendi:\n" + Path.GetFileName(excel), "Tamam", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void btnFavSil_Click(object sender, EventArgs e)
@@ -327,11 +415,43 @@ namespace BaranYardimci
                 btnTumExcel.Location = new Point(rightX, 8);
                 rightX -= padding;
             }
+            if (_btnMalzemeOzet != null)
+            {
+                rightX -= _btnMalzemeOzet.Width;
+                _btnMalzemeOzet.Location = new Point(rightX, 8);
+                rightX -= padding;
+            }
             if (btnExceliAc != null)
             {
                 rightX -= btnExceliAc.Width;
                 btnExceliAc.Location = new Point(rightX, 8);
             }
+        }
+        private void btnMalzemeOzet_Click(object sender, EventArgs e)
+        {
+            if (_tumVeriler.Count == 0)
+            { MessageBox.Show("Önce dosya yükleyin!", "Uyarı", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+
+            dgvDosyalar.EndEdit();
+            var sm = SM();
+
+            var veriler = _tumVeriler.Select(v => new FrmMalzemeOzet.OzetVeri
+            {
+                DosyaId = v.DosyaId,
+                DosyaAdi = v.DosyaAdi,
+                MontajNo = v.MontajNo,
+                ParcaNo = v.ParcaNo,
+                Profil = v.ParcaProfil,
+                Kalite = v.Kalite,
+                MontajAdeti = v.MontajAdeti,
+                BirimAdet = v.BirimAdet,
+                Uzunluk = v.Uzunluk,
+                Agirlik = v.Agirlik,
+                SiparisAdeti = sm.ContainsKey(v.DosyaId) ? sm[v.DosyaId] : 1
+            }).ToList();
+
+            using (var frm = new FrmMalzemeOzet(veriler))
+                frm.ShowDialog(this);
         }
         private void Donusturucu_Load(object sender, EventArgs e)
         {
@@ -374,16 +494,11 @@ namespace BaranYardimci
         private void Durum(string ikon, string metin, Color fg, Color bg)
         { try { lblDurumIkon.Text = ikon; lblDurumMetin.Text = metin; lblDurumMetin.ForeColor = fg; pnlDurumBar.BackColor = bg; } catch { } }
 
+        // Bu metodu tamamen sil. Eğer başka yerden çağrılıyorsa stub bırak:
         private void DurumSatiriGuncelle(string dosyaYolu, string durum)
         {
-            try
-            {
-                foreach (DataGridViewRow row in dgvDosyalar.Rows)
-                    if (row.Cells["colDosyaYolu"].Value?.ToString() == dosyaYolu)
-                    { row.Cells["colDurum"].Value = durum; break; }
-                TumSatirlariRenklendir();
-            }
-            catch { }
+            // Artık metin SatirRenklendir içinde set ediliyor — bu metod sadece renklendirir
+            TumSatirlariRenklendir();
         }
 
         private void dgvDosyalar_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
@@ -399,33 +514,32 @@ namespace BaranYardimci
             string yol = "";
             try { yol = row.Cells["colDosyaYolu"].Value?.ToString() ?? ""; } catch { }
 
-            // DEBUG: hangi satıra ne renk gidiyor — Output'a bas
-            string kategori = _civataEklendi.Contains(yol) ? "YEŞIL (civata)"
-                            : _rotaKaydedilen.Contains(yol) ? "MAVI (rota)"
-                            : _erpAktarimYapilan.Contains(yol) ? "SARI (erp)"
-                            : "KIRMIZI (yeni)";
-            System.Diagnostics.Debug.WriteLine($"[Renk] Satır {rowIdx}  yol='{yol}'  → {kategori}");
-
             Color bg, fg, selBg, selFg;
+            string durumMetin;
+
             if (_civataEklendi.Contains(yol))
             {
                 bg = Color.FromArgb(180, 240, 200); fg = Color.FromArgb(0, 90, 0);
-                selBg = Color.FromArgb(140, 210, 160); selFg = Color.FromArgb(0, 60, 0);
+                selBg = Color.FromArgb(110, 200, 140); selFg = Color.FromArgb(0, 40, 0);
+                durumMetin = "✅ Tamamlandı";
             }
             else if (_rotaKaydedilen.Contains(yol))
             {
                 bg = Color.FromArgb(180, 210, 255); fg = Color.FromArgb(0, 50, 130);
-                selBg = Color.FromArgb(140, 175, 230); selFg = Color.FromArgb(0, 30, 100);
+                selBg = Color.FromArgb(100, 150, 220); selFg = Color.FromArgb(0, 20, 80);
+                durumMetin = "🔵 Rota tamam — civata bekleniyor";
             }
             else if (_erpAktarimYapilan.Contains(yol))
             {
                 bg = Color.FromArgb(255, 243, 180); fg = Color.FromArgb(110, 80, 0);
-                selBg = Color.FromArgb(220, 205, 130); selFg = Color.FromArgb(80, 55, 0);
+                selBg = Color.FromArgb(220, 180, 60); selFg = Color.FromArgb(60, 40, 0);
+                durumMetin = "🟡 ERP aktarıldı — rota bekleniyor";
             }
             else
             {
                 bg = Color.FromArgb(255, 200, 200); fg = Color.FromArgb(120, 0, 0);
-                selBg = Color.FromArgb(220, 160, 160); selFg = Color.FromArgb(80, 0, 0);
+                selBg = Color.FromArgb(210, 120, 120); selFg = Color.FromArgb(60, 0, 0);
+                durumMetin = "🔴 ERP aktarımı bekleniyor";
             }
 
             var style = new DataGridViewCellStyle
@@ -433,11 +547,14 @@ namespace BaranYardimci
                 BackColor = bg,
                 ForeColor = fg,
                 SelectionBackColor = selBg,
-                SelectionForeColor = selFg
+                SelectionForeColor = selFg,
+                Font = new Font("Segoe UI", 9.5f, FontStyle.Bold)
             };
             row.DefaultCellStyle = style;
-            foreach (DataGridViewCell c in row.Cells)
-                c.Style = style;
+            foreach (DataGridViewCell c in row.Cells) c.Style = style;
+
+            // ── Durum metnini de hep aynı yerden set et — artık çelişki olamaz
+            try { row.Cells["colDurum"].Value = durumMetin; } catch { }
         }
         private void SatirlariRenklendir()
         {
@@ -835,7 +952,6 @@ namespace BaranYardimci
                 try { newRow.Cells["colDosyaAdi"].Value = ad; } catch { }
                 try { newRow.Cells["colSiparisAdeti"].Value = "1"; } catch { }
                 try { newRow.Cells["colDosyaYolu"].Value = yol; } catch { }
-                try { newRow.Cells["colDurum"].Value = "Yüklendi"; } catch { }
 
                 // Hemen bu satırı renklendir — yeni satır kesin KIRMIZI olacak
                 SatirRenklendir(idx);
@@ -1172,7 +1288,7 @@ namespace BaranYardimci
                 {
                     _erpAktarimYapilan.Add(dosyaYolu);
                     _erpExcelYollari[dosyaYolu] = kaydedilenYol;     // ← HER DOSYA KENDİ EXCEL'İNE
-                    try { dgvRow.Cells["colDurum"].Value = "🟡 ERP Aktarıldı — rota bekleniyor"; } catch { }
+                    SatirRenklendir(dgvRow.Index);
                     sonKaydedilen = kaydedilenYol;
                     basarili++;
                 }
@@ -1204,7 +1320,21 @@ namespace BaranYardimci
                     "Proje Numarası Gerekli", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
-
+            var btnMalzemeOzet = new Button
+            {
+                Text = "📊  Malzeme Özet",
+                Size = new Size(160, 48),
+                Font = new Font("Segoe UI", 9.5f, FontStyle.Bold),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(0, 120, 100),
+                ForeColor = Color.White,
+                Cursor = Cursors.Hand,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
+            btnMalzemeOzet.FlatAppearance.BorderSize = 0;
+            btnMalzemeOzet.Click += btnMalzemeOzet_Click;
+            pnlSonucButonlar.Controls.Add(btnMalzemeOzet);
+            this._btnMalzemeOzet = btnMalzemeOzet;
             // dgvDosyalar sırasına göre unique ERP Excel yollarını topla
             var erpExcelSirali = new List<string>();
             foreach (DataGridViewRow row in dgvDosyalar.Rows)
