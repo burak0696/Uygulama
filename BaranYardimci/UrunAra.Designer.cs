@@ -14,7 +14,9 @@
         {
             this.pnlUst = new System.Windows.Forms.Panel();
             this.lblBaslik = new System.Windows.Forms.Label();
+            this.lblIstatistik = new System.Windows.Forms.Label();
             this.lblAltBaslik = new System.Windows.Forms.Label();
+            this.lblModRozet = new System.Windows.Forms.Label();
 
             this.splitContainer = new System.Windows.Forms.SplitContainer();
             this.grpAgac = new System.Windows.Forms.GroupBox();
@@ -25,6 +27,7 @@
             this.ctxAgac = new System.Windows.Forms.ContextMenuStrip();
             this.mnuYenidenAdlandir = new System.Windows.Forms.ToolStripMenuItem();
             this.mnuYeniAlt = new System.Windows.Forms.ToolStripMenuItem();
+            this.mnuSil = new System.Windows.Forms.ToolStripMenuItem();
             this.mnuSep1 = new System.Windows.Forms.ToolStripSeparator();
             this.mnuYenile = new System.Windows.Forms.ToolStripMenuItem();
 
@@ -37,7 +40,6 @@
             this.dataGridView1 = new System.Windows.Forms.DataGridView();
 
             this.pnlAlt = new System.Windows.Forms.Panel();
-            this.btnYeniUrun = new System.Windows.Forms.Button();
             this.btnDetay = new System.Windows.Forms.Button();
             this.btnYenile = new System.Windows.Forms.Button();
             this.btnKapat = new System.Windows.Forms.Button();
@@ -61,24 +63,41 @@
             this.ctxAgac.SuspendLayout();
             this.SuspendLayout();
 
-            // ── pnlUst ───────────────────────────────────────────────
-            this.pnlUst.BackColor = System.Drawing.Color.FromArgb(30, 30, 32);
+            // ── pnlUst (gradyan gibi gözüksün) ───────────────────────
+            this.pnlUst.BackColor = System.Drawing.Color.FromArgb(25, 35, 55);
             this.pnlUst.Dock = System.Windows.Forms.DockStyle.Top;
-            this.pnlUst.Height = 68;
+            this.pnlUst.Height = 86;
+            this.pnlUst.Controls.Add(this.lblModRozet);
+            this.pnlUst.Controls.Add(this.lblIstatistik);
             this.pnlUst.Controls.Add(this.lblAltBaslik);
             this.pnlUst.Controls.Add(this.lblBaslik);
 
-            this.lblBaslik.Font = new System.Drawing.Font("Segoe UI", 16F, System.Drawing.FontStyle.Bold);
+            this.lblBaslik.Font = new System.Drawing.Font("Segoe UI", 17F, System.Drawing.FontStyle.Bold);
             this.lblBaslik.ForeColor = System.Drawing.Color.White;
-            this.lblBaslik.Location = new System.Drawing.Point(20, 8);
+            this.lblBaslik.Location = new System.Drawing.Point(20, 10);
             this.lblBaslik.AutoSize = true;
             this.lblBaslik.Text = "🌳  ÜRÜN KATALOĞU";
 
             this.lblAltBaslik.Font = new System.Drawing.Font("Segoe UI", 9.5F);
-            this.lblAltBaslik.ForeColor = System.Drawing.Color.FromArgb(180, 180, 200);
-            this.lblAltBaslik.Location = new System.Drawing.Point(22, 40);
+            this.lblAltBaslik.ForeColor = System.Drawing.Color.FromArgb(180, 200, 230);
+            this.lblAltBaslik.Location = new System.Drawing.Point(22, 44);
             this.lblAltBaslik.AutoSize = true;
-            this.lblAltBaslik.Text = "Soldan kategori seçin · Sağdaki ana ürüne çift tıklayın → varyantlar açılır";
+            this.lblAltBaslik.Text = "Soldan kategori seç · Sağda ana ürün listesi · Çift tıkla → varyantlar açılır";
+
+            this.lblIstatistik.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.lblIstatistik.ForeColor = System.Drawing.Color.FromArgb(255, 210, 80);
+            this.lblIstatistik.Location = new System.Drawing.Point(22, 62);
+            this.lblIstatistik.AutoSize = true;
+            this.lblIstatistik.Text = "📊  Yükleniyor...";
+
+            this.lblModRozet.Text = "👁  GÖRÜNTÜLEME MODU";
+            this.lblModRozet.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
+            this.lblModRozet.BackColor = System.Drawing.Color.FromArgb(60, 100, 140);
+            this.lblModRozet.ForeColor = System.Drawing.Color.White;
+            this.lblModRozet.Padding = new System.Windows.Forms.Padding(12, 6, 12, 6);
+            this.lblModRozet.Location = new System.Drawing.Point(0, 22);
+            this.lblModRozet.AutoSize = true;
+            this.lblModRozet.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right;
 
             // ── splitContainer ───────────────────────────────────────
             this.splitContainer.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -102,7 +121,6 @@
             this.grpAgac.Controls.Add(this.tvKategori);
             this.grpAgac.Controls.Add(this.pnlAgacUst);
 
-            // ── pnlAgacUst: filtre + şekillendir butonu ──────────────
             this.pnlAgacUst.Dock = System.Windows.Forms.DockStyle.Top;
             this.pnlAgacUst.Height = 78;
             this.pnlAgacUst.Padding = new System.Windows.Forms.Padding(0, 4, 0, 4);
@@ -116,13 +134,11 @@
             this.txtAgacFiltre.ForeColor = System.Drawing.Color.Gray;
             this.txtAgacFiltre.Text = "🔍 Ağaçta filtrele...";
 
-            FlatBtn(this.btnAgacSekillendir, "🌲  AĞAÇ ŞEKİLLENDİR  (Düzenle Modu)",
+            FlatBtn(this.btnAgacSekillendir, "🔒  AĞAÇ ŞEKİLLENDİR  (Yönetici)",
                 System.Drawing.Color.FromArgb(180, 100, 0));
             this.btnAgacSekillendir.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.btnAgacSekillendir.Height = 40;
-            this.btnAgacSekillendir.Margin = new System.Windows.Forms.Padding(0, 8, 0, 0);
 
-            // ── tvKategori ───────────────────────────────────────────
             this.tvKategori.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tvKategori.Font = new System.Drawing.Font("Segoe UI", 10F);
             this.tvKategori.BackColor = System.Drawing.Color.White;
@@ -134,18 +150,19 @@
             this.tvKategori.ItemHeight = 26;
             this.tvKategori.ContextMenuStrip = this.ctxAgac;
 
-            // ── ctxAgac ──────────────────────────────────────────────
             this.ctxAgac.Font = new System.Drawing.Font("Segoe UI", 10F);
             this.ctxAgac.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-                this.mnuYenidenAdlandir, this.mnuYeniAlt, this.mnuSep1, this.mnuYenile });
+                this.mnuYenidenAdlandir, this.mnuYeniAlt, this.mnuSil, this.mnuSep1, this.mnuYenile });
             this.mnuYenidenAdlandir.Text = "✏  Yeniden Adlandır";
             this.mnuYenidenAdlandir.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
             this.mnuYeniAlt.Text = "➕  Bu Düğümün Altına Yeni Ekle";
             this.mnuYeniAlt.ForeColor = System.Drawing.Color.FromArgb(0, 120, 60);
+            this.mnuSil.Text = "🗑  Bu Düğümü ve Tüm Altını Sil";
+            this.mnuSil.ForeColor = System.Drawing.Color.FromArgb(180, 40, 40);
             this.mnuYenile.Text = "🔄  Ağacı Yenile";
 
             // ── grpSag ───────────────────────────────────────────────
-            this.grpSag.Text = "📋  SEÇİLEN KATEGORİ — ANA ÜRÜNLER";
+            this.grpSag.Text = "📋  ANA ÜRÜNLER  —  varyantları görmek için satıra çift tıklayın";
             this.grpSag.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
             this.grpSag.ForeColor = System.Drawing.Color.FromArgb(40, 80, 40);
             this.grpSag.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -180,7 +197,7 @@
             this.btnTasarimSearch.Location = new System.Drawing.Point(420, 7);
             this.btnTasarimSearch.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right;
 
-            this.lblAciklama.Text = "💡 Boşluk ve tire (-) önemsizdir.   örn:  YEH20-1   ≡   YE H20 1   ≡   YEH201";
+            this.lblAciklama.Text = "💡 Açıklama veya Ürün Kodu ile ara. Boşluk/tire önemsizdir.";
             this.lblAciklama.Font = new System.Drawing.Font("Segoe UI", 8.5F, System.Drawing.FontStyle.Italic);
             this.lblAciklama.ForeColor = System.Drawing.Color.FromArgb(110, 110, 130);
             this.lblAciklama.Location = new System.Drawing.Point(95, 40);
@@ -215,22 +232,17 @@
             this.pnlAlt.Height = 56;
             this.pnlAlt.BackColor = System.Drawing.Color.FromArgb(240, 240, 245);
             this.pnlAlt.Padding = new System.Windows.Forms.Padding(10, 8, 10, 8);
-            this.pnlAlt.Controls.Add(this.btnYeniUrun);
             this.pnlAlt.Controls.Add(this.btnDetay);
             this.pnlAlt.Controls.Add(this.btnYenile);
             this.pnlAlt.Controls.Add(this.btnKapat);
 
-            FlatBtn(this.btnYeniUrun, "➕  Yeni Ürün", System.Drawing.Color.FromArgb(46, 139, 87));
-            this.btnYeniUrun.Size = new System.Drawing.Size(150, 40);
-            this.btnYeniUrun.Location = new System.Drawing.Point(10, 8);
-
-            FlatBtn(this.btnDetay, "📦  Varyantlara Git", System.Drawing.Color.FromArgb(0, 120, 200));
-            this.btnDetay.Size = new System.Drawing.Size(180, 40);
-            this.btnDetay.Location = new System.Drawing.Point(170, 8);
+            FlatBtn(this.btnDetay, "📦  Varyantlara Git  /  Yeni Ürün Ekle", System.Drawing.Color.FromArgb(0, 120, 200));
+            this.btnDetay.Size = new System.Drawing.Size(280, 40);
+            this.btnDetay.Location = new System.Drawing.Point(10, 8);
 
             FlatBtn(this.btnYenile, "🔄  Yenile", System.Drawing.Color.FromArgb(100, 100, 120));
             this.btnYenile.Size = new System.Drawing.Size(110, 40);
-            this.btnYenile.Location = new System.Drawing.Point(360, 8);
+            this.btnYenile.Location = new System.Drawing.Point(300, 8);
 
             FlatBtn(this.btnKapat, "✖  Kapat", System.Drawing.Color.FromArgb(160, 60, 60));
             this.btnKapat.Size = new System.Drawing.Size(120, 40);
@@ -274,6 +286,13 @@
             this.Text = "Ürün Kataloğu — Baran Çelik";
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
 
+            // Mod rozetini sağa hizala
+            this.pnlUst.Resize += (s, e) =>
+            {
+                this.lblModRozet.Location = new System.Drawing.Point(
+                    this.pnlUst.ClientSize.Width - this.lblModRozet.Width - 20, 24);
+            };
+
             ((System.ComponentModel.ISupportInitialize)(this.dataGridView1)).EndInit();
             this.splitContainer.Panel1.ResumeLayout(false);
             this.splitContainer.Panel2.ResumeLayout(false);
@@ -308,7 +327,7 @@
 
         // ── Fields ───────────────────────────────────────────────────
         private System.Windows.Forms.Panel pnlUst;
-        private System.Windows.Forms.Label lblBaslik, lblAltBaslik;
+        private System.Windows.Forms.Label lblBaslik, lblAltBaslik, lblIstatistik, lblModRozet;
 
         private System.Windows.Forms.SplitContainer splitContainer;
         private System.Windows.Forms.GroupBox grpAgac;
@@ -317,7 +336,7 @@
         private System.Windows.Forms.Button btnAgacSekillendir;
         private System.Windows.Forms.TreeView tvKategori;
         private System.Windows.Forms.ContextMenuStrip ctxAgac;
-        private System.Windows.Forms.ToolStripMenuItem mnuYenidenAdlandir, mnuYeniAlt, mnuYenile;
+        private System.Windows.Forms.ToolStripMenuItem mnuYenidenAdlandir, mnuYeniAlt, mnuSil, mnuYenile;
         private System.Windows.Forms.ToolStripSeparator mnuSep1;
 
         private System.Windows.Forms.GroupBox grpSag;
@@ -328,7 +347,7 @@
         private System.Windows.Forms.DataGridView dataGridView1;
 
         private System.Windows.Forms.Panel pnlAlt;
-        private System.Windows.Forms.Button btnYeniUrun, btnDetay, btnYenile, btnKapat;
+        private System.Windows.Forms.Button btnDetay, btnYenile, btnKapat;
         private System.Windows.Forms.Panel pnlStatus;
         private System.Windows.Forms.Label lblStatus, lblKayitSayisi;
     }
